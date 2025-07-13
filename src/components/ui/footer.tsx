@@ -1,0 +1,25 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
+export default function Footer() {
+  return (
+    // Footer
+    <footer className="border-t">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
+          <p className="text-sm text-muted-foreground">
+            © 2025 Tarbiyah Quiz. All rights reserved. Developed by <Link href="https://www.facebook.com/sohaghasan.net" className="text-muted-foreground hover:underline">Shoaib Hasan Sohag</Link>
+          </p>
+          <div className="flex space-x-4">
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:underline">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-sm text-muted-foreground hover:underline">
+              Terms of Service
+            </Link>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
