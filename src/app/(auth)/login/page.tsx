@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -14,7 +15,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react"
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { login, googleLogin } = useAuth()
+  const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -61,44 +62,19 @@ export default function LoginPage() {
         description: "You have been logged in successfully.",
       })
       router.push("/dashboard")
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to login";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to login",
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    try {
-      // Initialize Google OAuth
-      if (typeof window !== 'undefined' && window.google) {
-        const auth2 = window.google.auth2.getAuthInstance()
-        const googleUser = await auth2.signIn()
-        const idToken = googleUser.getAuthResponse().id_token
-        await googleLogin(idToken)
-        toast({
-          title: "Success",
-          description: "You have been logged in with Google successfully.",
-        })
-        router.push("/dashboard")
-      } else {
-        throw new Error("Google OAuth not available")
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to login with Google",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+
 
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
@@ -110,7 +86,7 @@ export default function LoginPage() {
       >
         <div className="relative z-20 flex items-center text-lg font-medium">
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
+            <Image src="/logo.svg" alt="Logo" width={32} height={32} className="h-8 w-8" />
             <span>Tarbiyah Quiz</span>
           </Link>
         </div>

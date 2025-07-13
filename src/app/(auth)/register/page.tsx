@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { departmentAPI } from "@/lib/api"
 
 export default function RegisterPage() {
@@ -16,8 +16,7 @@ export default function RegisterPage() {
   const { toast } = useToast()
   const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -49,17 +48,18 @@ export default function RegisterPage() {
         const res = await departmentAPI.getActiveDepartments();
         // Map to the expected format
         const activeDepartments = (res.data.data || [])
-          .map((dept: any) => ({
-            _id: dept._id,
-            name: dept.name
+          .map((dept: unknown) => ({
+            _id: (dept as { _id: string })._id,
+            name: (dept as { name: string }).name
           }));
         setDepartments(activeDepartments);
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to load departments. Please refresh the page.";
         console.error("Error fetching departments:", err);
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to load departments. Please refresh the page.",
+          description: errorMessage,
         });
       }
     }
@@ -104,11 +104,12 @@ export default function RegisterPage() {
         description: "Account created successfully!",
       })
       router.push("/dashboard")
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create account";
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to create account",
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)
@@ -209,7 +210,7 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type="password"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange}
@@ -223,7 +224,7 @@ export default function RegisterPage() {
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
+                type="password"
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}

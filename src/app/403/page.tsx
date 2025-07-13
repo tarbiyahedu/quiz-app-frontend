@@ -18,9 +18,7 @@ export default function ForbiddenPage() {
           <CardTitle className="text-2xl text-red-600">Access Forbidden</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <p className="text-gray-600">
-            You don't have permission to access this page. Please contact your administrator if you believe this is an error.
-          </p>
+          <p className="text-lg">You don&apos;t have permission to access this page.</p>
           <div className="flex flex-col space-y-2">
             <Link href="/dashboard">
               <Button className="w-full">

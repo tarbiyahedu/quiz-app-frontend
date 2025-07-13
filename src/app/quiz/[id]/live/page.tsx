@@ -36,7 +36,7 @@ export default function LiveQuizPage() {
       // Reset answer for this question
       setAnswer(Array(q.matchingPairs.length).fill(''));
     }
-    // eslint-disable-next-line
+     
   }, [current, questions]);
 
   useEffect(() => {

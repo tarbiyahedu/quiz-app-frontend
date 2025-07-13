@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select } from "@/components/ui/select";
-import DashboardLayout from "@/components/ui/dashboard-layout";
 import { useRouter } from "next/navigation";
 import { FaTrash, FaEdit, FaPlay, FaStop, FaEye } from 'react-icons/fa';
 import { useToast } from '@/components/ui/use-toast';
@@ -45,17 +41,12 @@ const defaultQuiz = {
 export default function AdminLiveQuizPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [form, setForm] = useState(defaultQuiz);
   const [error, setError] = useState("");
   const router = useRouter();
   const { toast } = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmStart, setConfirmStart] = useState(false);
-  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // Fetch all quizzes
   const fetchQuizzes = async () => {
@@ -93,9 +84,9 @@ export default function AdminLiveQuizPage() {
       setForm(defaultQuiz);
       fetchQuizzes();
       toast({ title: 'Quiz created', description: 'The quiz was created successfully.' });
-    } catch (e) {
-      setError((e as any).message);
-      toast({ title: 'Error creating quiz', description: (e as any).message, variant: 'destructive' });
+    } catch (e: unknown) {
+      setError((e as Error).message);
+      toast({ title: 'Error creating quiz', description: (e as Error).message, variant: 'destructive' });
     }
   };
 
@@ -109,9 +100,9 @@ export default function AdminLiveQuizPage() {
       setSelectedQuiz(null);
       fetchQuizzes();
       toast({ title: 'Quiz updated', description: 'The quiz was updated successfully.' });
-    } catch (e: any) {
-      setError(e.message);
-      toast({ title: 'Error updating quiz', description: e.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      setError((e as Error).message);
+      toast({ title: 'Error updating quiz', description: (e as Error).message, variant: 'destructive' });
     }
   };
 
@@ -125,9 +116,9 @@ export default function AdminLiveQuizPage() {
       setSelectedQuiz(null);
       fetchQuizzes();
       toast({ title: 'Quiz deleted', description: 'The quiz was deleted successfully.' });
-    } catch (e: any) {
-      setError(e.message);
-      toast({ title: 'Error deleting quiz', description: e.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      setError((e as Error).message);
+      toast({ title: 'Error deleting quiz', description: (e as Error).message, variant: 'destructive' });
     }
   };
 
@@ -142,9 +133,9 @@ export default function AdminLiveQuizPage() {
       if (!res.ok) throw new Error("Failed to start quiz");
       fetchQuizzes();
       toast({ title: 'Quiz started', description: 'The quiz was started successfully.' });
-    } catch (e: any) {
-      setError(e.message);
-      toast({ title: 'Error starting quiz', description: e.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      setError((e as Error).message);
+      toast({ title: 'Error starting quiz', description: (e as Error).message, variant: 'destructive' });
     }
   };
 
