@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
 import io from "socket.io-client";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
 
 export default function LiveQuizAnswerPage() {
   const { user, loading } = useAuth();

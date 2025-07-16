@@ -11,7 +11,8 @@ import { useParams } from "next/navigation";
 import StudentLayout from "@/app/layouts/student-layout";
 import { Badge } from "@/components/ui/badge";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
 
 export default function LiveQuizPage() {
   const params = useParams();

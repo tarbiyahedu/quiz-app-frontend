@@ -74,6 +74,7 @@ A modern, responsive quiz application built with Next.js, TypeScript, Tailwind C
    Create a `.env.local` file in the root directory:
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:5000/api
+   NEXT_PUBLIC_API_URL=https://quiz-app-backend-pi.vercel.app/api
    NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here
    NEXTAUTH_URL=http://localhost:3000
    NEXTAUTH_SECRET=your_nextauth_secret_here
