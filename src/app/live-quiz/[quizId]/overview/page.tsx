@@ -23,8 +23,12 @@ export default function LiveQuizOverviewPage() {
         setQuiz(quizRes.data.data);
         const qRes = await api.get(`/live-quiz-questions/quiz/${quizId}`);
         setQuestions(qRes.data.data || []);
-        const aRes = await api.get(`/live-quiz-answers/user/${user._id}`);
-        setAnswers(aRes.data.data?.filter((a: any) => a.quizId === quizId) || []);
+        if (user && user._id) {
+          const aRes = await api.get(`/live-quiz-answers/user/${user._id}`);
+          setAnswers(aRes.data.data?.filter((a: any) => a.quizId === quizId) || []);
+        } else {
+          setAnswers([]);
+        }
         const lbRes = await api.get(`/live-leaderboard/quiz/${quizId}`);
         setLeaderboard(lbRes.data.leaderboard || []);
       } catch (e) {

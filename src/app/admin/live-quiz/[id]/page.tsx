@@ -225,10 +225,9 @@ export default function AdminLiveQuizDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
-              className={quiz.isLive ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}
+              className={quiz.isLive ? 'bg-red-600 hover:bg-red-700 text-white w-full' : 'bg-green-600 hover:bg-green-700 text-white w-full'}
               onClick={handleToggleLive}
               disabled={liveLoading}
-              className="w-full"
             >
               {liveLoading ? (
                 'Processing...'

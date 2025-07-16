@@ -2,11 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { demoQuizzes } from "@/lib/utils"
 
-export default function QuizResultsPage({
-  params,
-}: {
-  params: { id: string }
-}) {
+export default async function QuizResultsPage({ params }: any) {
   // In a real app, we would fetch the quiz and results data from the backend
   const quiz = demoQuizzes.find((q) => q.id === params.id)
 
