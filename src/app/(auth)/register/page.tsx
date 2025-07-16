@@ -8,7 +8,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react"
 import { departmentAPI } from "@/lib/api"
 
 export default function RegisterPage() {
@@ -16,7 +15,6 @@ export default function RegisterPage() {
   const { toast } = useToast()
   const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -48,18 +46,17 @@ export default function RegisterPage() {
         const res = await departmentAPI.getActiveDepartments();
         // Map to the expected format
         const activeDepartments = (res.data.data || [])
-          .map((dept: unknown) => ({
-            _id: (dept as { _id: string })._id,
-            name: (dept as { name: string }).name
+          .map((dept: any) => ({
+            _id: dept._id,
+            name: dept.name
           }));
         setDepartments(activeDepartments);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to load departments. Please refresh the page.";
         console.error("Error fetching departments:", err);
         toast({
           variant: "destructive",
           title: "Error",
-          description: errorMessage,
+          description: "Failed to load departments. Please refresh the page.",
         });
       }
     }
@@ -104,12 +101,11 @@ export default function RegisterPage() {
         description: "Account created successfully!",
       })
       router.push("/dashboard")
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create account";
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to create account",
       })
     } finally {
       setIsLoading(false)
@@ -240,7 +236,6 @@ export default function RegisterPage() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating account...
                 </>
               ) : (

@@ -19,7 +19,7 @@ export default function ForbiddenPage() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p className="text-gray-600">
-            You don&apos;t have permission to access this page. Please contact your administrator if you believe this is an error.
+            You don't have permission to access this page. Please contact your administrator if you believe this is an error.
           </p>
           <div className="flex flex-col space-y-2">
             <Link href="/dashboard">
