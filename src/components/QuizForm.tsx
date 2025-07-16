@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import api from "@/lib/api";
-import { FaPlus, FaMinus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaImage, FaVideo, FaPlus, FaMinus } from 'react-icons/fa';
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
