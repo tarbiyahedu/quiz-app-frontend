@@ -50,7 +50,7 @@ export const authAPI = {
   login: (credentials: { login: string; password: string }) =>
     api.post('/users/login', credentials),
   
-  register: (userData: { name: string; email: string; password: string; department: string }) =>
+  register: (userData: { name: string; email: string; password: string; departments: string[] }) =>
     api.post('/users/register', userData),
   
   googleLogin: (token: string) =>
@@ -104,6 +104,7 @@ export const liveQuizAPI = {
   getCompletedQuizzes: () => api.get('/live-quiz-answers/completed'),
   getCompletedQuizDetails: (quizId: string) => api.get(`/live-quiz-answers/completed/${quizId}`),
   getAllCompletedQuizzes: () => api.get('/live-quiz-answers/all-completed'),
+  getQuizStatistics: (params?: any) => api.get('/live-quizzes/statistics', { params }),
 };
 
 // Live Quiz Questions API
@@ -114,11 +115,16 @@ export const liveQuizQuestionAPI = {
   deleteQuestion: (id: string) => api.delete(`/live-quiz-questions/${id}`),
 };
 
-// Live Quiz Answers API
+// Live Quiz Answer API
 export const liveQuizAnswerAPI = {
-  submitAnswer: (data: any) => api.post('/live-quiz-answers', data),
-  getAnswersByQuiz: (quizId: string) => api.get(`/live-quiz-answers/quiz/${quizId}`),
-  getAnswersByUser: (userId: string) => api.get(`/live-quiz-answers/user/${userId}`),
+  submitAnswer: (data: any) => api.post('/live-quiz-answers/submit', data),
+  submitMultipleAnswers: (data: any) => api.post('/live-quiz-answers/submit-multiple', data),
+  getAnswers: (quizId: string, params?: any) => api.get(`/live-quiz-answers/${quizId}`, { params }),
+  updateAnswer: (answerId: string, data: any) => api.put(`/live-quiz-answers/${answerId}`, data),
+  deleteAnswer: (answerId: string) => api.delete(`/live-quiz-answers/${answerId}`),
+  getCompletedQuizzes: () => api.get('/live-quiz-answers/completed'),
+  getCompletedQuizDetails: (quizId: string) => api.get(`/live-quiz-answers/completed/${quizId}`),
+  getAllCompletedQuizzes: () => api.get('/live-quiz-answers/all-completed'),
   getCompletedQuizDetailsForAdmin: (quizId: string) => api.get(`/live-quiz-answers/admin/completed/${quizId}`),
 };
 

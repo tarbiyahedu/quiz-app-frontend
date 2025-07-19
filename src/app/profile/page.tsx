@@ -25,7 +25,7 @@ export default function ProfilePage() {
     name: "",
     email: "",
     number: "",
-    department: ""
+    departments: [] as string[]
   });
   const [departments, setDepartments] = useState<{_id: string, name: string}[]>([]);
 
@@ -42,7 +42,7 @@ export default function ProfilePage() {
         name: user.name || "",
         email: user.email || "",
         number: user.number || "",
-        department: user.department?._id || ""
+        departments: user.departments?.map(dept => dept._id) || []
       });
     }
   }, [user]);
@@ -137,10 +137,12 @@ export default function ProfilePage() {
                     <span className="text-sm text-gray-600">{user.number}</span>
                   </div>
                 )}
-                {user.department && (
+                {user.departments && user.departments.length > 0 && (
                   <div className="flex items-center space-x-3">
                     <Building className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{user.department.name}</span>
+                    <span className="text-sm text-gray-600">
+                      {user.departments.map(dep => dep.name).join(", ")}
+                    </span>
                   </div>
                 )}
                 <div className="flex items-center space-x-3">
@@ -199,15 +201,15 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="department">Department</Label>
+                      <Label htmlFor="departments">Departments</Label>
                       <select
-                        id="department"
-                        value={formData.department}
-                        onChange={e => setFormData({ ...formData, department: e.target.value })}
+                        id="departments"
+                        multiple
+                        value={formData.departments}
+                        onChange={e => setFormData({ ...formData, departments: Array.from(e.target.selectedOptions, option => option.value) })}
                         required
                         className="border rounded px-3 py-2 w-full"
                       >
-                        <option value="">Select department</option>
                         {departments.map(dep => (
                           <option key={dep._id} value={dep._id}>{dep.name}</option>
                         ))}
@@ -241,8 +243,12 @@ export default function ProfilePage() {
                       <p className="text-gray-900">{user.number || "Not provided"}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-700">Department</Label>
-                      <p className="text-gray-900">{user.department?.name || "Not assigned"}</p>
+                      <Label className="text-sm font-medium text-gray-700">Departments</Label>
+                      <p className="text-gray-900">
+                        {user.departments && user.departments.length > 0
+                          ? user.departments.map(dep => dep.name).join(", ")
+                          : "Not assigned"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700">Account Status</Label>

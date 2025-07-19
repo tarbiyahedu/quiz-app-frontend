@@ -3,8 +3,65 @@
 import StudentLayout from "@/app/layouts/student-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Trophy, Clock, Target, GraduationCap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { liveQuizAPI } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import Link from "next/link";
 
 export default function StudentDashboardPage() {
+  const { user } = useAuth();
+  const [availableQuizzes, setAvailableQuizzes] = useState<any[]>([]);
+  const [completedQuizzes, setCompletedQuizzes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    Promise.all([
+      liveQuizAPI.getAllQuizzes({ status: 'live', limit: 100 }), // For upcoming/ongoing
+      liveQuizAPI.getCompletedQuizzes(), // For participated
+      liveQuizAPI.getAllQuizzes({ status: 'live', limit: 100 }) // fallback, since getAvailableQuizzes does not exist
+    ])
+      .then(([allLive, completed, available]) => {
+        // Filter quizzes based on user's departments
+        let filteredAvailable = available.data?.data || available.data || [];
+        if (user.departments && user.departments.length > 0) {
+          const userDeptIds = user.departments.map(dept => dept._id);
+          filteredAvailable = filteredAvailable.filter((quiz: any) => 
+            userDeptIds.includes(quiz.department?._id)
+          );
+        } else if (user.department) {
+          // Fallback to old department field
+          filteredAvailable = filteredAvailable.filter((quiz: any) => 
+            quiz.department?._id === user.department?._id
+          );
+        }
+        
+        setAvailableQuizzes(filteredAvailable);
+        setCompletedQuizzes((completed.data?.data || completed.data) ?? []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Failed to load dashboard data");
+        setLoading(false);
+      });
+  }, [user]);
+
+  if (!user || loading) {
+    return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0E2647] border-t-transparent"></div></div>;
+  }
+  if (error) {
+    return <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>;
+  }
+
+  // Stats
+  const quizzesTaken = completedQuizzes.length;
+  const availableCount = availableQuizzes.length;
+  const lastQuiz = completedQuizzes.length > 0 ? completedQuizzes[0] : null;
+  const averageScore = quizzesTaken > 0 ? Math.round(completedQuizzes.reduce((sum, q) => sum + (q.score || 0), 0) / quizzesTaken) : 0;
+  // For study time and achievements, keep demo or add logic if available
+
   return (
     <StudentLayout>
       <div className="space-y-4 lg:space-y-6">
@@ -22,9 +79,9 @@ export default function StudentDashboardPage() {
               <BookOpen className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">24</div>
+              <div className="text-lg lg:text-2xl font-bold">{quizzesTaken}</div>
               <p className="text-xs text-muted-foreground">
-                +3 this week
+                {/* +X this week */}
               </p>
             </CardContent>
           </Card>
@@ -35,36 +92,40 @@ export default function StudentDashboardPage() {
               <Target className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">85%</div>
+              <div className="text-lg lg:text-2xl font-bold">{averageScore}%</div>
               <p className="text-xs text-muted-foreground">
-                +5% from last month
+                {/* +X% from last month */}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Study Time</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Available Live Quizzes</CardTitle>
               <Clock className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">12.5h</div>
+              <div className="text-lg lg:text-2xl font-bold">{availableCount}</div>
               <p className="text-xs text-muted-foreground">
-                This week
+                {/* This week */}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Achievements</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Last Participated Quiz</CardTitle>
               <Trophy className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">8</div>
-              <p className="text-xs text-muted-foreground">
-                Badges earned
-              </p>
+              {lastQuiz ? (
+                <div>
+                  <div className="font-bold">{lastQuiz.title}</div>
+                  <div className="text-xs text-muted-foreground">Score: {lastQuiz.score}%</div>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">No quiz taken yet</div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -80,33 +141,18 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent className="space-y-3 lg:space-y-4">
               <div className="space-y-2 lg:space-y-3">
-                <div className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-sm lg:text-base">JavaScript Fundamentals</h3>
-                      <p className="text-xs lg:text-sm text-gray-600">Live Quiz • 30 minutes</p>
+                {availableQuizzes.length === 0 && <div className="text-xs text-muted-foreground">No available live quizzes</div>}
+                {availableQuizzes.map((quiz, idx) => (
+                  <div key={quiz._id || idx} className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-sm lg:text-base">{quiz.title}</h3>
+                        <p className="text-xs lg:text-sm text-gray-600">Live Quiz • {quiz.timeLimit || 30} minutes</p>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Live Now</span>
                     </div>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Live Now</span>
                   </div>
-                </div>
-                <div className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-sm lg:text-base">React Basics</h3>
-                      <p className="text-xs lg:text-sm text-gray-600">Assignment • Due in 2 days</p>
-                    </div>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Open</span>
-                  </div>
-                </div>
-                <div className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium text-sm lg:text-base">Node.js Backend</h3>
-                      <p className="text-xs lg:text-sm text-gray-600">Assignment • Due in 5 days</p>
-                    </div>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Open</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -117,34 +163,16 @@ export default function StudentDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 lg:space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-xs lg:text-sm font-medium">Completed JavaScript Quiz</p>
-                    <p className="text-xs text-gray-600">Score: 92% • 2 hours ago</p>
+                {completedQuizzes.length === 0 && <div className="text-xs text-muted-foreground">No recent activity</div>}
+                {completedQuizzes.slice(0, 4).map((quiz, idx) => (
+                  <div key={quiz.quizId || quiz.id || idx} className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-xs lg:text-sm font-medium">Completed {quiz.title}</p>
+                      <p className="text-xs text-gray-600">Score: {quiz.score}% • {quiz.completionDate ? new Date(quiz.completionDate).toLocaleString() : ''}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-xs lg:text-sm font-medium">Started React Assignment</p>
-                    <p className="text-xs text-gray-600">Progress: 60% • 1 day ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-xs lg:text-sm font-medium">Earned "Quick Learner" Badge</p>
-                    <p className="text-xs text-gray-600">For completing 5 quizzes • 2 days ago</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-xs lg:text-sm font-medium">Joined Live Quiz Session</p>
-                    <p className="text-xs text-gray-600">HTML & CSS Basics • 3 days ago</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -157,22 +185,22 @@ export default function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-              <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+              <Link href="/live-quiz" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                 <div className="font-medium text-sm lg:text-base">Join Live Quiz</div>
                 <div className="text-xs lg:text-sm text-gray-600">Participate in real-time</div>
-              </button>
-              <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+              </Link>
+              <Link href="/assignment-quiz" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                 <div className="font-medium text-sm lg:text-base">Start Assignment</div>
                 <div className="text-xs lg:text-sm text-gray-600">Work on assignments</div>
-              </button>
-              <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+              </Link>
+              <Link href="/result" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                 <div className="font-medium text-sm lg:text-base">View Results</div>
                 <div className="text-xs lg:text-sm text-gray-600">Check your scores</div>
-              </button>
-              <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+              </Link>
+              <Link href="/favorite-quiz" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                 <div className="font-medium text-sm lg:text-base">Favorites</div>
                 <div className="text-xs lg:text-sm text-gray-600">Saved quizzes</div>
-              </button>
+              </Link>
             </div>
           </CardContent>
         </Card>

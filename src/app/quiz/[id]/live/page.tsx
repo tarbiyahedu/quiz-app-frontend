@@ -216,7 +216,7 @@ export default function LiveQuizPage() {
         setAnswer("");
       } else {
         // Quiz completed
-        router.push(`/quiz/${id}/results`);
+        router.push('/result');
       }
     } catch (err) {
       console.error("Failed to submit answer:", err);

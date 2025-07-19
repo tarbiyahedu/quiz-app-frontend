@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/ui/dashboard-layout';
+import { MultiSelectCombobox } from '@/components/ui/MultiSelectCombobox';
 
 interface User {
   _id: string;
@@ -27,6 +28,7 @@ interface User {
   role: string;
   approved: boolean;
   department?: { _id: string; name: string };
+  departments?: { _id: string; name: string }[];
   createdAt: string;
   number?: string;
   avatar?: string;
@@ -38,12 +40,12 @@ const ManageUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', number: '', password: '', department: '', role: '' });
-  const [departments, setDepartments] = useState([]);
+  const [newUser, setNewUser] = useState({ name: '', email: '', number: '', password: '', departments: [] as string[], role: '' });
+  const [departments, setDepartments] = useState<Array<{ _id: string; name: string }>>([]);
   const [adding, setAdding] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', number: '', password: '', department: '', role: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', number: '', password: '', departments: [] as string[], role: '' });
   const [updating, setUpdating] = useState(false);
   const [editFormErrors, setEditFormErrors] = useState<{ number?: string; password?: string }>({});
   const [sortConfig, setSortConfig] = useState<{ key: keyof User | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
@@ -144,7 +146,7 @@ const ManageUsersPage = () => {
       await authAPI.register(newUser);
       toast({ title: 'Success', description: 'User added successfully.' });
       setAddDialogOpen(false);
-      setNewUser({ name: '', email: '', number: '', password: '', department: '', role: '' });
+      setNewUser({ name: '', email: '', number: '', password: '', departments: [] as string[], role: '' });
       fetchUsers();
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to add user.' });
@@ -160,7 +162,7 @@ const ManageUsersPage = () => {
       email: user.email,
       number: user.number || '',
       password: '',
-      department: user.department?._id || '',
+      departments: user.departments?.map(dept => dept.name) || [],
       role: user.role || '',
     });
     setEditDialogOpen(true);
@@ -191,7 +193,16 @@ const ManageUsersPage = () => {
       if (!editForm.password) {
         delete updateData.password;
       }
-      await userAPI.updateUser(editingUser._id, updateData);
+      
+      // Convert department names back to department IDs for the API
+      const departmentIds = editForm.departments
+        .map(deptName => departments.find((dept: any) => dept.name === deptName)?._id)
+        .filter(Boolean);
+      
+      await userAPI.updateUser(editingUser._id, {
+        ...updateData,
+        departments: departmentIds,
+      });
       toast({ title: 'Success', description: 'User updated successfully.' });
       setEditDialogOpen(false);
       setEditingUser(null);
@@ -217,7 +228,10 @@ const ManageUsersPage = () => {
     .filter(user =>
       (!roleFilter || user.role === roleFilter) &&
       (!statusFilter || (statusFilter === 'approved' ? user.approved : !user.approved)) &&
-      (!departmentFilter || user.department?._id === departmentFilter)
+      (!departmentFilter || 
+        user.department?._id === departmentFilter || 
+        user.departments?.some(dept => dept._id === departmentFilter)
+      )
     )
     .filter(user => {
       const term = searchTerm.toLowerCase();
@@ -233,8 +247,8 @@ const ManageUsersPage = () => {
       let aValue = a[sortConfig.key!];
       let bValue = b[sortConfig.key!];
       if (sortConfig.key === 'department') {
-        aValue = a.department?.name || '';
-        bValue = b.department?.name || '';
+        aValue = a.departments?.map(dept => dept.name).join(', ') || a.department?.name || '';
+        bValue = b.departments?.map(dept => dept.name).join(', ') || b.department?.name || '';
       }
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         return sortConfig.direction === 'asc'
@@ -260,14 +274,14 @@ const ManageUsersPage = () => {
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleExportExcel = () => {
-    const headers = ['Name', 'Number', 'Email', 'Role', 'Status', 'Department', 'Join Date'];
+    const headers = ['Name', 'Number', 'Email', 'Role', 'Status', 'Departments', 'Join Date'];
     const rows = filteredUsers.map(user => [
       user.name,
       user.number || '',
       user.email,
       user.role,
       user.approved ? 'Approved' : 'Not Approved',
-      user.department?.name || '',
+      user.departments?.map(dept => dept.name).join(', ') || user.department?.name || '',
       new Date(user.createdAt).toLocaleDateString()
     ]);
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -310,13 +324,13 @@ const ManageUsersPage = () => {
                   <Input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} required />
                 </div>
                 <div>
-                  <Label>Department</Label>
-                  <select className="w-full border rounded px-2 py-1" value={newUser.department} onChange={e => setNewUser({ ...newUser, department: e.target.value })} required>
-                    <option value="">Select Department</option>
-                    {departments.map((dept: any) => (
-                      <option key={dept._id} value={dept._id}>{dept.name}</option>
-                    ))}
-                  </select>
+                  <Label>Departments</Label>
+                  <MultiSelectCombobox
+                    options={departments.map((dept: any) => ({ value: dept.name, label: dept.name }))}
+                    value={newUser.departments || []}
+                    onChange={vals => setNewUser(u => ({ ...u, departments: vals }))}
+                    label="Departments"
+                  />
                 </div>
                 <div>
                   <Label>Role</Label>
@@ -387,7 +401,7 @@ const ManageUsersPage = () => {
                   <TableHead onClick={() => handleSort('email')} className="cursor-pointer">Email {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
                   <TableHead onClick={() => handleSort('role')} className="cursor-pointer">Role {sortConfig.key === 'role' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
                   <TableHead onClick={() => handleSort('approved')} className="cursor-pointer">Status {sortConfig.key === 'approved' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
-                  <TableHead onClick={() => handleSort('department')} className="cursor-pointer">Department {sortConfig.key === 'department' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
+                  <TableHead onClick={() => handleSort('department')} className="cursor-pointer">Departments {sortConfig.key === 'department' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
                   <TableHead onClick={() => handleSort('createdAt')} className="cursor-pointer">Join Date {sortConfig.key === 'createdAt' && (sortConfig.direction === 'asc' ? '▲' : '▼')}</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -414,7 +428,19 @@ const ManageUsersPage = () => {
                           {user.approved ? 'Approved' : 'Not Approved'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.department?.name || 'N/A'}</TableCell>
+                      <TableCell>
+                        {user.departments && user.departments.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {user.departments.map((dept, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {dept.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">N/A</span>
+                        )}
+                      </TableCell>
                       <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -478,21 +504,21 @@ const ManageUsersPage = () => {
                 )}
               </div>
               <div>
+                <Label>Departments</Label>
+                <MultiSelectCombobox
+                  options={departments.map((dept: any) => ({ value: dept.name, label: dept.name }))}
+                  value={editForm.departments || []}
+                  onChange={vals => setEditForm(f => ({ ...f, departments: vals }))}
+                  label="Departments"
+                />
+              </div>
+              <div>
                 <Label>Role</Label>
                 <select className="w-full border rounded px-2 py-1" value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} required>
                   <option value="">Select Role</option>
                   <option value="admin">Admin</option>
                   <option value="teacher">Teacher</option>
                   <option value="student">Student</option>
-                </select>
-              </div>
-              <div>
-                <Label>Department</Label>
-                <select className="w-full border rounded px-2 py-1" value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })} required>
-                  <option value="">Select Department</option>
-                  {departments.map((dept: any) => (
-                    <option key={dept._id} value={dept._id}>{dept.name}</option>
-                  ))}
                 </select>
               </div>
               <DialogFooter>

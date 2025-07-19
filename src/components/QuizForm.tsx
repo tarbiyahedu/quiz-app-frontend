@@ -53,7 +53,7 @@ type Quiz = {
 type QuizFormProps = {
   mode: "create" | "edit";
   initialQuiz?: Quiz;
-  onSave?: () => void;
+  onSave?: (quizId: string) => void;
 };
 
 // Question Type Components
@@ -503,6 +503,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
     department: "",
     questions: [],
   });
+  const [originalQuestionIds, setOriginalQuestionIds] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [questionDraft, setQuestionDraft] = useState<Question>({
     type: "short",
@@ -533,6 +534,11 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
             department: "",
             questions: [],
           }
+    );
+    setOriginalQuestionIds(
+      initialQuiz && Array.isArray(initialQuiz.questions)
+        ? initialQuiz.questions.filter((q: any) => q._id).map((q: any) => q._id)
+        : []
     );
   }, [initialQuiz]);
 
@@ -704,7 +710,16 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         quizId = quiz._id;
       }
 
-      // Save questions
+      // --- DELETE removed questions ---
+      if (mode === "edit" && originalQuestionIds.length > 0) {
+        const currentIds = quiz.questions.filter((q: any) => q._id).map((q: any) => q._id);
+        const deletedIds = originalQuestionIds.filter((id) => !currentIds.includes(id));
+        for (const id of deletedIds) {
+          await api.delete(`/live-quiz-questions/${id}`);
+        }
+      }
+
+      // --- SAVE/UPDATE questions ---
       for (const [order, q] of quiz.questions.entries()) {
         const questionType = QUESTION_TYPES.find(t => t.value === q.type)?.backendType || "Short";
         
@@ -766,7 +781,19 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         description: `Quiz successfully ${mode === "create" ? 'saved' : 'updated'}!`, 
         variant: 'default' 
       });
-      if (onSave) onSave();
+      // --- Refetch quiz/questions after save ---
+      if (mode === "edit" && quizId) {
+        try {
+          const res = await api.get(`/live-quizzes/${quizId}`);
+          if (res.data && res.data.data) {
+            setQuiz({ ...res.data.data });
+            // Optionally, refetch questions if not included in quiz
+            // const qRes = await api.get(`/live-quiz-questions/${quizId}`);
+            // setQuiz(q => ({ ...q, questions: qRes.data.data || [] }));
+          }
+        } catch {}
+      }
+      if (onSave) onSave(String(quizId));
     } catch (e: any) {
       setSaving(false);
       setError(e.message || `Failed to ${mode === "create" ? 'save' : 'update'} quiz`);
@@ -852,7 +879,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
       await api.post(`/live-quizzes/${quizId}/start`);
       setSaving(false);
       toast({ title: 'Quiz is now live!', description: 'The quiz has been started in live mode.' });
-      if (onSave) onSave();
+      if (onSave && typeof quizId === 'string') onSave(String(quizId));
     } catch (e: any) {
       setSaving(false);
       setError(e.message || 'Failed to start live quiz');
@@ -977,12 +1004,8 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
                   )}
                 </CardContent>
               </Card>
-              <Button size="icon" variant="outline" onClick={() => handleEditQuestion(idx)} aria-label="Edit">
-                <FaEdit />
-              </Button>
-              <Button size="icon" variant="destructive" onClick={() => handleRemoveQuestion(idx)} aria-label="Delete">
-                <FaTrash />
-              </Button>
+              <Button size="icon" variant="outline" onClick={() => handleEditQuestion(idx)} aria-label="Edit"><FaEdit /></Button>
+              <Button size="icon" variant="destructive" onClick={() => handleRemoveQuestion(idx)} aria-label="Delete"><FaTrash /></Button>
             </div>
           ))}
         </DndProvider>

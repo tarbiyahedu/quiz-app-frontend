@@ -25,6 +25,8 @@ type Quiz = {
   totalQuestions?: number;
   currentParticipants?: number;
   department?: { name: string };
+  createdBy?: { name: string };
+  timeLimit?: number;
   // add other fields as needed
 };
 
@@ -150,54 +152,58 @@ export default function AdminLiveQuizPage() {
 
   // UI
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-[#0E2647]">Manage Live Quizzes</h1>
-        <Button onClick={() => router.push("/admin/live-quiz/create")} className="bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647]">Create Quiz</Button>
+    <div className="flex flex-col h-full bg-[#f9fafb] min-h-screen pb-12">
+      <div className="flex items-center justify-between mb-10 mt-8 px-2 md:px-0">
+        <h1 className="text-4xl font-extrabold text-[#0e2647] tracking-tight relative after:content-[''] after:block after:w-16 after:h-1 after:bg-[#FAB364] after:rounded-full after:mt-2">Manage Live Quizzes</h1>
+        <Button onClick={() => router.push("/admin/live-quiz/create")} className="bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647] px-6 py-3 text-lg font-semibold rounded-xl shadow-none">Create Quiz</Button>
       </div>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
+      {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
       {loading && <Spinner className="mx-auto my-8" />}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 px-2 md:px-0">
         {quizzes.length === 0 ? (
-          <div className="col-span-full text-center py-8">No quizzes found.</div>
+          <div className="col-span-full text-center py-12 text-lg text-gray-500">No quizzes found.</div>
         ) : (
           quizzes.map((quiz) => (
-            <Card key={quiz._id} className="hover:shadow-lg transition-shadow flex flex-col justify-between h-full">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{quiz.title}</CardTitle>
-                    <div className="text-sm text-gray-600 mt-1 flex flex-wrap gap-2">
-                      <Badge>{quiz.mode}</Badge>
-                      <Badge variant={quiz.status === 'live' ? 'default' : 'secondary'} className={
-                        quiz.status === 'live' ? 'bg-green-100 text-green-800' : 
-                        quiz.status === 'completed' ? 'bg-gray-200 text-gray-600' : 
-                        quiz.status === 'draft' ? 'bg-yellow-100 text-yellow-800' : 
-                        quiz.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : ''
-                      }>{quiz.status}</Badge>
-                      <span>Start: {quiz.startTime ? new Date(quiz.startTime).toLocaleString() : "-"}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 flex-1 flex flex-col justify-between">
-                <div className="text-sm text-gray-700">{quiz.description}</div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="outline">Participants: {quiz.currentParticipants ?? 0}</Badge>
-                  <Badge variant="outline">Questions: {quiz.totalQuestions ?? 0}</Badge>
-                  <Badge variant="outline">Department: {quiz.department?.name || "-"}</Badge>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  {/* Actions: View/Edit/Delete/Start/End (to be implemented) */}
-                  <Button size="sm" variant="outline" onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)} aria-label="View Quiz"><FaEye /></Button>
-                  <Button size="sm" variant="outline" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/edit`)} aria-label="Edit Quiz"><FaEdit /></Button>
-                  <Button size="sm" variant="destructive" onClick={() => { setSelectedQuiz(quiz); setConfirmDelete(true); }} aria-label="Delete Quiz"><FaTrash /></Button>
-                  {quiz.status === 'live' && <Button size="sm" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/start`)} aria-label="End Quiz"><FaStop /></Button>}
-                  {(quiz.status === 'completed' || quiz.status === 'draft') && <Button size="sm" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/start`)} aria-label="Start Quiz"><FaPlay /></Button>}
-                  {quiz.status === 'scheduled' && <Button size="sm" onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)} aria-label="View Schedule"><FaEye /></Button>}
-                </div>
-              </CardContent>
-            </Card>
+            <div key={quiz._id} className="relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[240px] transition hover:shadow-md">
+              {/* Status badge top-right */}
+              <span className={`absolute top-6 right-6 px-3 py-1 rounded-full text-xs font-semibold ${
+                quiz.status === 'live' ? 'bg-green-100 text-green-700' :
+                quiz.status === 'completed' ? 'bg-gray-100 text-gray-600' :
+                quiz.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                quiz.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {quiz.status === 'live' ? 'Live Now' : quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1)}
+              </span>
+              {/* Title and creator */}
+              <div className="mb-2">
+                <div className="text-xl font-bold text-[#0e2647] mb-1">{quiz.title}</div>
+                {quiz.createdBy && <div className="text-sm text-gray-500">by {quiz.createdBy.name}</div>}
+              </div>
+              {/* Info row */}
+              <div className="flex flex-wrap gap-4 items-center text-sm text-gray-700 mb-4">
+                <span className="flex items-center gap-1"><span className="text-base">👥</span> {quiz.currentParticipants ?? 0} participants</span>
+                <span className="flex items-center gap-1"><span className="text-base">⏰</span> {quiz.timeLimit ?? 0} min</span>
+                <span className="flex items-center gap-1"><span className="text-base">🏫</span> {quiz.department?.name || '-'}</span>
+                <span className="flex items-center gap-1"><span className="text-base">❓</span> {quiz.totalQuestions ?? 0} questions</span>
+              </div>
+              {/* Description */}
+              <div className="text-gray-600 text-base mb-6 line-clamp-2 flex-1">{quiz.description}</div>
+              {/* Actions */}
+              <div className="flex gap-2 mt-auto">
+                <Button
+                  onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)}
+                  aria-label="View Quiz"
+                  className="rounded-lg font-semibold text-base px-6 py-2 bg-white border border-[#0E75C4] text-[#0E75C4] hover:bg-[#e6f1fa] transition min-w-[140px]"
+                >
+                  View Details
+                </Button>
+                <Button size="icon" variant="outline" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/edit`)} aria-label="Edit Quiz" className="rounded-lg border-gray-300 text-gray-700 hover:bg-gray-100"><FaEdit /></Button>
+                <Button size="icon" variant="outline" onClick={() => { setSelectedQuiz(quiz); setConfirmDelete(true); }} aria-label="Delete Quiz" className="rounded-lg bg-white text-red-600 border border-gray-300 hover:bg-red-50"><FaTrash /></Button>
+                {quiz.status === 'live' && <Button size="icon" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/start`)} aria-label="End Quiz" className="rounded-lg border-gray-300 text-red-600 hover:bg-red-50"><FaStop /></Button>}
+                {quiz.status === 'scheduled' && <Button size="icon" onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)} aria-label="View Schedule" className="rounded-lg border-gray-300 text-blue-700 hover:bg-blue-50"><FaEye /></Button>}
+              </div>
+            </div>
           ))
         )}
       </div>

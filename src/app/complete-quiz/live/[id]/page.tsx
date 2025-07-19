@@ -164,6 +164,16 @@ export default function LiveQuizDetailsPage() {
               )}
             </div>
           ))}
+          
+          {/* Show user's answer if it's not in the options (for debugging) */}
+          {answer.userAnswer && answer.userAnswer.trim() !== '' && 
+           !answer.questionOptions.includes(answer.userAnswer) && (
+            <div className="p-3 rounded-lg border-2 border-orange-300 bg-orange-50">
+              <span className="font-medium text-orange-700">
+                Your submitted answer: {answer.userAnswer}
+              </span>
+            </div>
+          )}
         </div>
       );
     };
@@ -193,7 +203,10 @@ export default function LiveQuizDetailsPage() {
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="font-medium">Your Answer:</span>
                 <span className={answer.isCorrect ? "text-green-600" : "text-red-600"}>
-                  {answer.userAnswer || "No answer provided"}
+                  {answer.userAnswer && answer.userAnswer.trim() !== '' 
+                    ? answer.userAnswer 
+                    : "Answer submitted (empty)"
+                  }
                 </span>
               </div>
               {!answer.isCorrect && (

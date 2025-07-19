@@ -26,8 +26,8 @@ export default function LiveQuizStudentDashboard() {
     const fetchQuizzes = async () => {
       setLoading(true);
       try {
-        const params = user?.department?._id ? { department: user.department._id } : {};
-        const res = await api.get("/live-quizzes/available", { params });
+        // No need to pass department parameter as the backend will handle multiple departments
+        const res = await api.get("/live-quizzes/available");
         setQuizzes(res.data.data || []);
       } catch (e: any) {
         setError(e.message || "Failed to load quizzes");
@@ -46,7 +46,7 @@ export default function LiveQuizStudentDashboard() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Available Live Quizzes</h1>
       {quizzes.length === 0 ? (
-        <div className="text-gray-500">No live quizzes available for your department.</div>
+        <div className="text-gray-500">No live quizzes available for your departments.</div>
       ) : (
         <div className="container max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quizzes.map(quiz => (

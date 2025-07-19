@@ -14,19 +14,19 @@ export default function AdminResultsOverviewPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchCompletedQuizzes = async () => {
+    const fetchQuizStatistics = async () => {
       try {
         setLoading(true);
-        const response = await liveQuizAPI.getAllQuizzes({ status: 'completed' });
+        const response = await liveQuizAPI.getQuizStatistics({ status: 'completed' });
         setQuizzes(response.data.data || []);
       } catch (err: any) {
-        setError(err.response?.data?.message || "Failed to fetch completed quizzes");
+        setError(err.response?.data?.message || "Failed to fetch quiz statistics");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCompletedQuizzes();
+    fetchQuizStatistics();
   }, []);
 
   if (loading) {
@@ -35,7 +35,7 @@ export default function AdminResultsOverviewPage() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading completed quizzes...</p>
+            <p className="mt-4 text-gray-600">Loading quiz statistics...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -54,6 +54,13 @@ export default function AdminResultsOverviewPage() {
       </DashboardLayout>
     );
   }
+
+  // Calculate overall statistics
+  const totalParticipants = quizzes.reduce((sum, quiz) => sum + (quiz.participantCount || 0), 0);
+  const totalQuestions = quizzes.reduce((sum, quiz) => sum + (quiz.questionCount || 0), 0);
+  const averageScore = quizzes.length > 0 
+    ? Math.round(quizzes.reduce((sum, quiz) => sum + (quiz.averageScore || 0), 0) / quizzes.length)
+    : 0;
 
   return (
     <DashboardLayout>
@@ -82,9 +89,7 @@ export default function AdminResultsOverviewPage() {
               <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">Total Participants</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold text-green-600">
-                {quizzes.reduce((sum, quiz) => sum + (quiz.participantCount || 0), 0)}
-              </div>
+              <div className="text-lg lg:text-2xl font-bold text-green-600">{totalParticipants}</div>
             </CardContent>
           </Card>
           
@@ -93,11 +98,7 @@ export default function AdminResultsOverviewPage() {
               <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">Average Score</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold text-purple-600">
-                {quizzes.length > 0 
-                  ? Math.round(quizzes.reduce((sum, quiz) => sum + (quiz.averageScore || 0), 0) / quizzes.length)
-                  : 0}%
-              </div>
+              <div className="text-lg lg:text-2xl font-bold text-purple-600">{averageScore}%</div>
             </CardContent>
           </Card>
           
@@ -106,9 +107,7 @@ export default function AdminResultsOverviewPage() {
               <CardTitle className="text-xs lg:text-sm font-medium text-gray-600">Total Questions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold text-orange-600">
-                {quizzes.reduce((sum, quiz) => sum + (quiz.questionCount || 0), 0)}
-              </div>
+              <div className="text-lg lg:text-2xl font-bold text-orange-600">{totalQuestions}</div>
             </CardContent>
           </Card>
         </div>

@@ -13,68 +13,79 @@ import {
   Target,
   Award
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { liveQuizAPI } from "@/lib/api";
 
 export default function ResultPage() {
   const { user } = useAuth();
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!user) {
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    liveQuizAPI.getAllCompletedQuizzes()
+      .then(res => {
+        setResults(res.data.data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Failed to load results");
+        setLoading(false);
+      });
+  }, [user]);
+
+  if (!user || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0E2647] border-t-transparent"></div>
       </div>
     );
   }
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>
+    );
+  }
 
-  const recentResults = [
-    {
-      id: 1,
-      quizTitle: "JavaScript Fundamentals",
-      score: 92,
-      totalQuestions: 20,
-      correctAnswers: 18,
-      timeTaken: "25 min",
-      date: "2024-01-15",
-      type: "Live Quiz",
-      rank: 3
-    },
-    {
-      id: 2,
-      quizTitle: "React Basics",
-      score: 88,
-      totalQuestions: 15,
-      correctAnswers: 13,
-      timeTaken: "18 min",
-      date: "2024-01-14",
-      type: "Assignment",
-      rank: 5
-    },
-    {
-      id: 3,
-      quizTitle: "Database Design",
-      score: 95,
-      totalQuestions: 25,
-      correctAnswers: 24,
-      timeTaken: "35 min",
-      date: "2024-01-13",
-      type: "Live Quiz",
-      rank: 1
-    }
-  ];
+  // Calculate performance stats
+  const totalQuizzes = results.length;
+  const averageScore = totalQuizzes > 0 ? Math.round(results.reduce((sum, r) => sum + (r.score || 0), 0) / totalQuizzes) : 0;
+  const bestScore = results.reduce((max, r) => Math.max(max, r.score || 0), 0);
+  const totalTime = results.reduce((sum, r) => sum + (r.timeTaken || 0), 0);
+  // For improvement, you may want to compare last N scores, here just a placeholder
+  const improvement = totalQuizzes > 1 ? `${results[totalQuizzes-1].score - results[0].score > 0 ? '+' : ''}${results[totalQuizzes-1].score - results[0].score}%` : '0%';
+
+  // Category performance (by department/category)
+  const categoryMap: Record<string, { score: number, questions: number, count: number }> = {};
+  results.forEach(r => {
+    const cat = r.category || r.department || 'Other';
+    if (!categoryMap[cat]) categoryMap[cat] = { score: 0, questions: 0, count: 0 };
+    categoryMap[cat].score += r.score || 0;
+    categoryMap[cat].questions += r.totalQuestions || 0;
+    categoryMap[cat].count += 1;
+  });
+  const categoryPerformance = Object.entries(categoryMap).map(([category, data]) => ({
+    category,
+    score: data.count > 0 ? Math.round(data.score / data.count) : 0,
+    questions: data.questions
+  }));
+
+  // Sort results by completion date (most recent first)
+  const recentResults = [...results].sort((a, b) => {
+    const dateA = a.completionDate ? new Date(a.completionDate).getTime() : 0;
+    const dateB = b.completionDate ? new Date(b.completionDate).getTime() : 0;
+    return dateB - dateA;
+  }).slice(0, 5);
 
   const performanceStats = {
-    totalQuizzes: 24,
-    averageScore: 85,
-    bestScore: 95,
-    totalTime: "12h 30m",
-    improvement: "+8%"
+    totalQuizzes,
+    averageScore,
+    bestScore,
+    totalTime: `${Math.floor(totalTime / 60)}h ${totalTime % 60}m`,
+    improvement
   };
-
-  const categoryPerformance = [
-    { category: "Programming", score: 88, questions: 45 },
-    { category: "Web Development", score: 92, questions: 32 },
-    { category: "Database", score: 85, questions: 28 },
-    { category: "System Design", score: 78, questions: 15 }
-  ];
 
   return (
     <DashboardLayout>
@@ -135,15 +146,16 @@ export default function ResultPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentResults.map((result) => (
-                <div key={result.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+              {recentResults.map((result, idx) => (
+                <div key={result.id || result.quizId || idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <h3 className="font-medium text-[#0E2647]">{result.quizTitle}</h3>
+                      <h3 className="font-medium text-[#0E2647]">{result.title}</h3>
                       <Badge variant="outline" className="text-xs">
                         {result.type}
                       </Badge>
-                      {result.rank <= 3 && (
+                      {/* Optionally show rank if available */}
+                      {result.rank && result.rank <= 3 && (
                         <Badge className="bg-[#FAB364] text-white text-xs">
                           #{result.rank}
                         </Badge>
@@ -152,14 +164,14 @@ export default function ResultPage() {
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{result.date}</span>
+                        <span>{result.completionDate ? new Date(result.completionDate).toLocaleDateString() : 'N/A'}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4" />
-                        <span>{result.timeTaken}</span>
+                        <span>{result.timeTaken || 0} min</span>
                       </div>
                       <div>
-                        <span>{result.correctAnswers}/{result.totalQuestions} correct</span>
+                        <span>{result.correctAnswers || 0}/{result.totalQuestions || 0} correct</span>
                       </div>
                     </div>
                   </div>

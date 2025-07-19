@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { departmentAPI } from "@/lib/api"
+import { MultiSelectCombobox } from "@/components/ui/MultiSelectCombobox"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     number: "",
     password: "",
     confirmPassword: "",
-    department: "",
+    departments: [] as string[],
     role: "student"
   })
   const [departments, setDepartments] = useState<{ _id: string; name: string }[]>([])
@@ -88,12 +89,17 @@ export default function RegisterPage() {
     }
 
     try {
+      // Convert department names to department IDs
+      const departmentIds = formData.departments
+        .map(deptName => departments.find((dept: any) => dept.name === deptName)?._id)
+        .filter(Boolean);
+
       await register({
         name: formData.name,
         email: formData.email,
         number: formData.number,
         password: formData.password,
-        department: formData.department,
+        departments: departmentIds,
         role: 'student'
       })
       toast({
@@ -183,22 +189,13 @@ export default function RegisterPage() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <select
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleSelectChange}
-                required
-                className="w-full p-3 border border-[#0E2647] rounded-lg focus:ring-2 focus:ring-[#FAB364] focus:border-[#FAB364]"
-              >
-                <option value="">Select your department</option>
-                {departments.map((dept) => (
-                  <option key={dept._id} value={dept._id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor="departments">Departments</Label>
+              <MultiSelectCombobox
+                options={departments.map((dept: any) => ({ value: dept.name, label: dept.name }))}
+                value={formData.departments}
+                onChange={(vals) => setFormData({ ...formData, departments: vals })}
+                placeholder="Select your departments"
+              />
             </div>
             
             <div className="space-y-2">

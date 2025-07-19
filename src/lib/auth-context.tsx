@@ -9,6 +9,7 @@ interface User {
   email: string;
   role: 'admin' | 'student';
   department?: { _id: string; name: string };
+  departments?: { _id: string; name: string }[];
   isApproved: boolean;
   profilePicture?: string;
   avatar?: string;

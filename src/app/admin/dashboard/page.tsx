@@ -3,8 +3,47 @@
 import AdminLayout from "@/app/layouts/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, BookOpen, Trophy, BarChart3, Crown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { liveQuizAPI } from "@/lib/api";
+import Link from "next/link";
 
 export default function AdminDashboardPage() {
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    liveQuizAPI.getAllQuizzes({ limit: 1000 })
+      .then(res => {
+        setQuizzes(res.data.data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError("Failed to load quizzes");
+        setLoading(false);
+      });
+  }, []);
+
+  // Stats
+  const totalQuizzes = quizzes.length;
+  const runningQuizzes = quizzes.filter(q => q.status === 'live' || q.isLive).length;
+  const today = new Date();
+  const todayQuizzes = quizzes.filter(q => {
+    const start = q.startTime ? new Date(q.startTime) : null;
+    return start && start.toDateString() === today.toDateString();
+  }).length;
+  const latestQuizzes = [...quizzes].sort((a, b) => new Date(b.startTime || b.createdAt).getTime() - new Date(a.startTime || a.createdAt).getTime()).slice(0, 5);
+
+  // Optionally, participant count per quiz (not shown in cards, but can be added)
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0E2647] border-t-transparent"></div></div>;
+  }
+  if (error) {
+    return <div className="flex min-h-screen items-center justify-center text-red-600">{error}</div>;
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-4 lg:space-y-6">
@@ -18,53 +57,56 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Total Live Quizzes</CardTitle>
               <Users className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">1,234</div>
+              <div className="text-lg lg:text-2xl font-bold">{totalQuizzes}</div>
               <p className="text-xs text-muted-foreground">
-                +20.1% from last month
+                {/* Optionally: +X from last week */}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Active Quizzes</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Currently Running</CardTitle>
               <BookOpen className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">45</div>
+              <div className="text-lg lg:text-2xl font-bold">{runningQuizzes}</div>
               <p className="text-xs text-muted-foreground">
-                +5 new this week
+                {/* Optionally: +X new this week */}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Completed Quizzes</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Today's Live Quizzes</CardTitle>
               <Trophy className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">892</div>
+              <div className="text-lg lg:text-2xl font-bold">{todayQuizzes}</div>
               <p className="text-xs text-muted-foreground">
-                +12% from last week
+                {/* Optionally: +X from last week */}
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xs lg:text-sm font-medium">Average Score</CardTitle>
+              <CardTitle className="text-xs lg:text-sm font-medium">Latest Live Quizzes</CardTitle>
               <BarChart3 className="h-3 w-3 lg:h-4 lg:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-lg lg:text-2xl font-bold">78.5%</div>
-              <p className="text-xs text-muted-foreground">
-                +2.1% from last month
-              </p>
+              <div className="text-xs text-muted-foreground">
+                {latestQuizzes.map((quiz, idx) => (
+                  <div key={quiz._id || idx} className="mb-1">
+                    <span className="font-bold">{quiz.title}</span> <span className="ml-2">{quiz.startTime ? new Date(quiz.startTime).toLocaleString() : ''}</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -80,22 +122,22 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent className="space-y-3 lg:space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+                <Link href="/admin/live-quiz/create" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                   <div className="font-medium text-sm lg:text-base">Create Quiz</div>
                   <div className="text-xs lg:text-sm text-gray-600">Set up a new quiz</div>
-                </button>
-                <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+                </Link>
+                <Link href="/admin/manageuser" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                   <div className="font-medium text-sm lg:text-base">Manage Users</div>
                   <div className="text-xs lg:text-sm text-gray-600">View and edit users</div>
-                </button>
-                <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+                </Link>
+                <Link href="/admin/results-overview" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                   <div className="font-medium text-sm lg:text-base">View Results</div>
                   <div className="text-xs lg:text-sm text-gray-600">Check quiz results</div>
-                </button>
-                <button className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left">
+                </Link>
+                <Link href="/admin/settings" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                   <div className="font-medium text-sm lg:text-base">Settings</div>
                   <div className="text-xs lg:text-sm text-gray-600">Configure system</div>
-                </button>
+                </Link>
               </div>
             </CardContent>
           </Card>

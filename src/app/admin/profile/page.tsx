@@ -24,7 +24,7 @@ export default function AdminProfilePage() {
     name: "",
     email: "",
     number: "",
-    department: ""
+    departments: [] as string[]
   });
 
   // Role-based access control
@@ -40,7 +40,7 @@ export default function AdminProfilePage() {
         name: user.name || "",
         email: user.email || "",
         number: user.number || "",
-        department: user.department?.name || ""
+        departments: user.departments?.map(dept => dept._id) || []
       });
     }
   }, [user]);
@@ -131,10 +131,12 @@ export default function AdminProfilePage() {
                     <span className="text-sm text-gray-600">{user.number}</span>
                   </div>
                 )}
-                {user.department && (
+                {user.departments && user.departments.length > 0 && (
                   <div className="flex items-center space-x-3">
                     <Building className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{user.department.name}</span>
+                    <span className="text-sm text-gray-600">
+                      {user.departments.map(dep => dep.name).join(", ")}
+                    </span>
                   </div>
                 )}
                 <div className="flex items-center space-x-3">
@@ -220,8 +222,12 @@ export default function AdminProfilePage() {
                       <p className="text-gray-900">{user.number || "Not provided"}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-700">Department</Label>
-                      <p className="text-gray-900">{user.department?.name || "Not assigned"}</p>
+                      <Label className="text-sm font-medium text-gray-700">Departments</Label>
+                      <p className="text-gray-900">
+                        {user.departments && user.departments.length > 0
+                          ? user.departments.map(dep => dep.name).join(", ")
+                          : "Not assigned"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700">Role</Label>

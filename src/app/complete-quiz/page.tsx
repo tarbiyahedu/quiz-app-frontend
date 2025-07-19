@@ -77,9 +77,9 @@ export default function CompleteQuizPage() {
   }
 
   const filteredQuizzes = completedQuizzes.filter(quiz =>
-    quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quiz.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    quiz.type.toLowerCase().includes(searchTerm.toLowerCase())
+    quiz.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quiz.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    quiz.type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getScoreColor = (score: number) => {
@@ -162,7 +162,7 @@ export default function CompleteQuizPage() {
               </div>
               <div className="text-2xl font-bold text-[#0E2647]">
                 {completedQuizzes.length > 0 
-                  ? Math.round(completedQuizzes.reduce((acc, quiz) => acc + quiz.score, 0) / completedQuizzes.length)
+                  ? Math.round(completedQuizzes.reduce((acc, quiz) => acc + (quiz.score || 0), 0) / completedQuizzes.length)
                   : 0}%
               </div>
               <div className="text-sm text-gray-600">Average Score</div>
@@ -175,7 +175,7 @@ export default function CompleteQuizPage() {
                 <Trophy className="h-8 w-8 text-[#FAB364]" />
               </div>
               <div className="text-2xl font-bold text-[#0E2647]">
-                {completedQuizzes.filter(quiz => quiz.score >= 90).length}
+                {completedQuizzes.filter(quiz => (quiz.score || 0) >= 90).length}
               </div>
               <div className="text-sm text-gray-600">High Scores (90%+)</div>
             </CardContent>
@@ -187,7 +187,7 @@ export default function CompleteQuizPage() {
                 <Clock className="h-8 w-8 text-purple-600" />
               </div>
               <div className="text-2xl font-bold text-[#0E2647]">
-                {completedQuizzes.reduce((acc, quiz) => acc + quiz.timeTaken, 0)}m
+                {completedQuizzes.reduce((acc, quiz) => acc + (quiz.timeTaken || 0), 0)}m
               </div>
               <div className="text-sm text-gray-600">Total Time</div>
             </CardContent>
@@ -228,14 +228,14 @@ export default function CompleteQuizPage() {
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(quiz.completionDate)}</span>
+                        <span>{formatDate(quiz.completionDate || new Date().toISOString())}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4" />
-                        <span>{quiz.timeTaken}m</span>
+                        <span>{quiz.timeTaken || 0}m</span>
                       </div>
                       <div>
-                        <span>{quiz.correctAnswers}/{quiz.totalQuestions} correct</span>
+                        <span>{quiz.correctAnswers || 0}/{quiz.totalQuestions || 0} correct</span>
                       </div>
                     </div>
                     <div className="mt-2">

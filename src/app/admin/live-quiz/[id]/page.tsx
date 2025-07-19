@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Share2, Play, Square, Calendar, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import Link from "next/link";
+import LiveParticipantsPanel from "./LiveParticipantsPanel";
 
 export default function AdminLiveQuizDetailPage() {
   const { user, loading } = useAuth();
@@ -195,7 +197,8 @@ export default function AdminLiveQuizDetailPage() {
             </div>
           </div>
         )}
-
+        {/* Live Participants Section */}
+        <LiveParticipantsPanel quizId={quizId} showControls={false} />
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Questions ({questions.length})</h2>
           {questions.length === 0 ? (
@@ -243,7 +246,12 @@ export default function AdminLiveQuizDetailPage() {
                 </>
               )}
             </Button>
-            
+            {/* New See Live Overview Link */}
+            <div className="text-center mt-2">
+              <Link href={`/admin/live-quiz/${quizId}/start`} className="text-blue-600 hover:underline text-sm font-medium">
+                See Live Overview
+              </Link>
+            </div>
             <div className="text-center">
               <span className={quiz.isLive ? 'text-green-600 font-semibold' : 'text-gray-500'}>
                 {quiz.isLive ? 'Quiz is LIVE' : 'Quiz is not live'}
