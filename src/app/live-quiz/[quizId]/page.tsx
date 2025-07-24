@@ -38,6 +38,9 @@ export default function LiveQuizAnswerPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper to check if MCQ
+  const isMCQ = (q: any) => q.type === 'MCQ' || q.type === 'mcq';
+
   // Fetch quiz and questions
   useEffect(() => {
     async function fetchQuiz() {
@@ -277,7 +280,20 @@ export default function LiveQuizAnswerPage() {
   // Handle answer selection
   const handleSelect = (option: string) => {
     if (!isLive || ended) return;
-    setAnswers((prev) => ({ ...prev, [question._id]: option }));
+    if (isMCQ(question)) {
+      setAnswers((prev) => {
+        const prevArr = Array.isArray(prev[question._id]) ? prev[question._id] : [];
+        if (prevArr.includes(option)) {
+          // Unselect
+          return { ...prev, [question._id]: prevArr.filter((o: string) => o !== option) };
+        } else {
+          // Select
+          return { ...prev, [question._id]: [...prevArr, option] };
+        }
+      });
+    } else {
+      setAnswers((prev) => ({ ...prev, [question._id]: option }));
+    }
   };
 
   // Navigation
@@ -296,7 +312,12 @@ export default function LiveQuizAnswerPage() {
 
       // Prepare answers array for ALL questions, not just answered ones
       const answersArray = questions.map((question, index) => {
-        const answerText = answers[question._id] || ''; // Use empty string if no answer
+        let answerText = answers[question._id];
+        if (isMCQ(question)) {
+          answerText = Array.isArray(answerText) ? answerText : [];
+        } else {
+          answerText = answerText || '';
+        }
         console.log(`Question ${index + 1}: ${question.questionText}`);
         console.log(`Answer: ${answerText}`);
         return {
@@ -399,24 +420,42 @@ export default function LiveQuizAnswerPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                {question.options && question.options.map((opt: string, idx: number) => (
-                  <Button
-                    key={idx}
-                    variant={answers[question._id] === opt ? "default" : "outline"}
-                    className={`w-full py-6 text-lg justify-start ${
-                      answers[question._id] === opt 
-                        ? "bg-blue-500 text-white hover:bg-blue-600" 
-                        : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => handleSelect(opt)}
-                    disabled={!isLive || ended}
-                  >
-                    <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
-                    {opt}
-                  </Button>
-                ))}
-              </div>
+              {isMCQ(question) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  {question.options && question.options.map((opt: string, idx: number) => (
+                    <label key={idx} className="flex items-center gap-3 p-4 border rounded-lg cursor-pointer bg-white hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={Array.isArray(answers[question._id]) && answers[question._id].includes(opt)}
+                        onChange={() => handleSelect(opt)}
+                        disabled={!isLive || ended}
+                        className="h-5 w-5 accent-blue-600"
+                      />
+                      <span className="font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
+                      <span className="text-lg">{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  {question.options && question.options.map((opt: string, idx: number) => (
+                    <Button
+                      key={idx}
+                      variant={answers[question._id] === opt ? "default" : "outline"}
+                      className={`w-full py-6 text-lg justify-start ${
+                        answers[question._id] === opt 
+                          ? "bg-blue-500 text-white hover:bg-blue-600" 
+                          : "hover:bg-gray-50"
+                      }`}
+                      onClick={() => handleSelect(opt)}
+                      disabled={!isLive || ended}
+                    >
+                      <span className="font-bold mr-3">{String.fromCharCode(65 + idx)}.</span>
+                      {opt}
+                    </Button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex justify-between">
                 <Button 

@@ -87,8 +87,6 @@ A modern, responsive quiz application built with Next.js, TypeScript, Tailwind C
    pnpm dev
    ```
 
-   Quiz App Configarution
-
 5. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 

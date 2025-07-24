@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Medal, Crown, Download, BarChart3, TrendingUp, Clock, Target } from 'lucide-react';
-import { liveLeaderboardAPI, assignmentLeaderboardAPI } from '@/lib/api';
+import { liveLeaderboardAPI } from '@/lib/api';
+import { publicQuizAPI } from '@/lib/api';
 
 interface LeaderboardEntry {
   _id: string;
@@ -33,26 +34,26 @@ interface ChartData {
 export default function LeaderboardPage() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('live');
+  const [publicQuizzes, setPublicQuizzes] = useState<any[]>([]);
+  const [loadingPublic, setLoadingPublic] = useState(true);
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, [activeTab]);
+    fetchPublicQuizzes();
+    const interval = setInterval(() => {
+      fetchPublicQuizzes();
+    }, 10000); // 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-  const fetchLeaderboard = async () => {
-    setLoading(true);
+  const fetchPublicQuizzes = async () => {
+    setLoadingPublic(true);
     try {
-      if (activeTab === 'live') {
-        const response = await liveLeaderboardAPI.getLeaderboard('all');
-        setLeaderboardData(response.data.leaderboard || []);
-      } else {
-        const response = await assignmentLeaderboardAPI.getLeaderboard('all');
-        setLeaderboardData(response.data.leaderboard || []);
-      }
+      const response = await publicQuizAPI.getAllPublic();
+      setPublicQuizzes(response.data.data || []);
     } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
+      console.error('Failed to fetch public quizzes:', error);
     } finally {
-      setLoading(false);
+      setLoadingPublic(false);
     }
   };
 
@@ -99,223 +100,29 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-8"
-        >
-          <h1 className="text-4xl font-bold text-[#0E2647] mb-4">Leaderboard</h1>
-          <p className="text-lg text-gray-600">Track performance and compete with peers</p>
-        </motion.div>
-
-        {/* Tab Navigation */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex justify-center mb-8"
-        >
-          <div className="bg-white rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => setActiveTab('live')}
-              className={`px-6 py-2 rounded-md transition-all duration-300 ${
-                activeTab === 'live'
-                  ? 'bg-[#0E2647] text-white shadow-md'
-                  : 'text-gray-600 hover:text-[#0E2647]'
-              }`}
-            >
-              Live Quizzes
-            </button>
-            <button
-              onClick={() => setActiveTab('assignment')}
-              className={`px-6 py-2 rounded-md transition-all duration-300 ${
-                activeTab === 'assignment'
-                  ? 'bg-[#0E2647] text-white shadow-md'
-                  : 'text-gray-600 hover:text-[#0E2647]'
-              }`}
-            >
-              Assignment Quizzes
-            </button>
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Leaderboard Table */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="lg:col-span-2"
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+        {/* Public Quizzes Section */}
+        <div className="mb-10">
+          <h2 className="text-2xl font-bold mb-4 text-[#0E2647]">Public Quizzes</h2>
+          {loadingPublic ? (
+            <div className="text-gray-500">Loading public quizzes...</div>
+          ) : publicQuizzes.length === 0 ? (
+            <div className="text-gray-500">No public quizzes available right now.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {publicQuizzes.map((quiz) => (
+                <Card key={quiz._id} className="bg-white border rounded-xl shadow p-4 flex flex-col justify-between">
                   <div>
-                    <CardTitle className="text-2xl font-bold text-[#0E2647]">
-                      Top Performers
-                    </CardTitle>
-                    <CardDescription>
-                      {activeTab === 'live' ? 'Live Quiz' : 'Assignment Quiz'} Leaderboard
-                    </CardDescription>
+                    <CardTitle className="text-lg font-bold text-[#0E2647]">{quiz.title}</CardTitle>
+                    <CardDescription className="mb-2">{quiz.description}</CardDescription>
+                    <div className="text-sm text-gray-600 mb-2">Department: {quiz.department?.name || 'All'}</div>
                   </div>
-                  <Button onClick={downloadResults} variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
+                  <Button className="mt-2 w-full bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647]" asChild>
+                    <a href={`/join/${quiz.code || quiz._id}`}>Join Quiz</a>
                   </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2647]"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {leaderboardData.slice(0, 10).map((entry, index) => (
-                      <motion.div
-                        key={entry._id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center justify-center w-10 h-10">
-                            {getRankIcon(entry.rank)}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-[#0E2647]">
-                              {entry.user.name}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              {entry.user.department.name}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-center">
-                            <p className="text-lg font-bold text-[#0E2647]">
-                              {entry.score}
-                            </p>
-                            <p className="text-xs text-gray-600">Score</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-gray-700">
-                              {formatTime(entry.timeTaken)}
-                            </p>
-                            <p className="text-xs text-gray-600">Time</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-medium text-green-600">
-                              {entry.accuracy}%
-                            </p>
-                            <p className="text-xs text-gray-600">Accuracy</p>
-                          </div>
-                          <Badge className={getRankBadge(entry.rank)}>
-                            #{entry.rank}
-                          </Badge>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Statistics Sidebar */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="space-y-6"
-          >
-            {/* Performance Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="mr-2 h-5 w-5" />
-                  Performance Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Average Score</span>
-                  <span className="font-semibold text-[#0E2647]">78.5%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Total Participants</span>
-                  <span className="font-semibold text-[#0E2647]">1,234</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Active Quizzes</span>
-                  <span className="font-semibold text-[#0E2647]">23</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Top Score</span>
-                  <span className="font-semibold text-green-600">98%</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Winner Highlights */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Trophy className="mr-2 h-5 w-5" />
-                  Winner Highlights
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-                    <Crown className="h-6 w-6 text-yellow-500" />
-                    <div>
-                      <p className="font-semibold text-[#0E2647]">John Doe</p>
-                      <p className="text-sm text-gray-600">Computer Science</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <Medal className="h-6 w-6 text-gray-400" />
-                    <div>
-                      <p className="font-semibold text-[#0E2647]">Jane Smith</p>
-                      <p className="text-sm text-gray-600">Mathematics</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3 p-3 bg-amber-50 rounded-lg">
-                    <Trophy className="h-6 w-6 text-amber-600" />
-                    <div>
-                      <p className="font-semibold text-[#0E2647]">Mike Johnson</p>
-                      <p className="text-sm text-gray-600">Physics</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full" variant="outline">
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  View My Progress
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Target className="mr-2 h-4 w-4" />
-                  Set Goals
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Recent Activity
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useAuth } from '@/lib/auth-context';
+import io from "socket.io-client";
 
 // Quiz type for display
 interface Quiz {
@@ -13,6 +14,7 @@ interface Quiz {
   description: string;
   timeLimit: number;
   schedule?: string;
+  department: any; // Add this line to fix the type error
 }
 
 export default function LiveQuizStudentDashboard() {
@@ -22,23 +24,87 @@ export default function LiveQuizStudentDashboard() {
   const [error, setError] = useState("");
   const router = useRouter();
 
+  // Helper to filter quizzes by department
+  const filterByDepartment = (quizList: Quiz[]) => {
+    if (!user) return [];
+    const userDeptIds = user.departments?.map((d: any) => d._id) || [];
+    return quizList.filter(q => userDeptIds.includes(q.department?._id || q.department));
+  };
+
   useEffect(() => {
+    console.log("[LiveQuiz] useEffect: user:", user);
     const fetchQuizzes = async () => {
       setLoading(true);
       try {
-        // No need to pass department parameter as the backend will handle multiple departments
-        const res = await api.get("/live-quizzes/available");
-        setQuizzes(res.data.data || []);
+        // Fetch all live quizzes
+        const res = await api.get("/live-quizzes?status=live");
+        const filtered = filterByDepartment(res.data.data || []);
+        setQuizzes(filtered);
+        console.log("[LiveQuiz] Initial quizzes fetched and filtered:", filtered);
       } catch (e: any) {
         setError(e.message || "Failed to load quizzes");
+        console.error("[LiveQuiz] Error fetching quizzes:", e);
       }
       setLoading(false);
     };
     if (user) fetchQuizzes();
   }, [user]);
 
+  useEffect(() => {
+    console.log("[LiveQuiz] Socket useEffect running. User:", user);
+    if (!user) {
+      console.log("[LiveQuiz] No user, skipping socket setup");
+      return;
+    }
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
-  
+    // Join all department rooms
+    if (user.departments && Array.isArray(user.departments)) {
+      user.departments.forEach(dept => {
+        socket.emit('join-department', { departmentId: dept._id });
+        console.log("[LiveQuiz] Joined department room:", dept._id);
+      });
+    }
+
+    socket.on("connect", () => {
+      console.log("[LiveQuiz] Socket connected:", socket.id);
+    });
+    socket.on("disconnect", () => {
+      console.log("[LiveQuiz] Socket disconnected");
+    });
+
+    // When a quiz goes live
+    socket.on("quiz-live", (quiz: any) => {
+      console.log("[LiveQuiz] Received quiz-live event:", quiz);
+      setQuizzes(prev => {
+        if (prev.some(q => q._id === quiz.quizId || q._id === quiz._id)) return prev;
+        const updated = [...prev, { ...quiz, _id: quiz.quizId || quiz._id }];
+        console.log("[LiveQuiz] Quiz added. Updated quiz list:", updated);
+        return updated;
+      });
+    });
+
+    // When a quiz ends
+    socket.on("quiz-ended", (data: any) => {
+      console.log("[LiveQuiz] Received quiz-ended event:", data);
+      setQuizzes(prev => {
+        const updated = prev.filter(q => q._id !== data.quizId);
+        console.log("[LiveQuiz] Quiz removed. Updated quiz list:", updated);
+        return updated;
+      });
+    });
+
+    socket.on("error", (err) => {
+      console.error("[LiveQuiz] Socket error:", err);
+    });
+
+    return () => {
+      console.log("[LiveQuiz] Cleaning up socket connection");
+      socket.disconnect();
+    };
+  }, [user]);
+
+
   if (loading) return <div>Loading quizzes...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 

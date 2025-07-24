@@ -189,17 +189,9 @@ export default function StudentDashboardPage() {
                 <div className="font-medium text-sm lg:text-base">Join Live Quiz</div>
                 <div className="text-xs lg:text-sm text-gray-600">Participate in real-time</div>
               </Link>
-              <Link href="/assignment-quiz" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
-                <div className="font-medium text-sm lg:text-base">Start Assignment</div>
-                <div className="text-xs lg:text-sm text-gray-600">Work on assignments</div>
-              </Link>
               <Link href="/result" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
                 <div className="font-medium text-sm lg:text-base">View Results</div>
                 <div className="text-xs lg:text-sm text-gray-600">Check your scores</div>
-              </Link>
-              <Link href="/favorite-quiz" className="p-3 lg:p-4 border rounded-lg hover:bg-gray-50 transition-colors text-left w-full block">
-                <div className="font-medium text-sm lg:text-base">Favorites</div>
-                <div className="text-xs lg:text-sm text-gray-600">Saved quizzes</div>
               </Link>
             </div>
           </CardContent>

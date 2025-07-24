@@ -10,6 +10,8 @@ import { liveQuizQuestionAPI } from '@/lib/api';
 import { useParams } from "next/navigation";
 import StudentLayout from "@/app/layouts/student-layout";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
@@ -23,8 +25,14 @@ export default function LiveQuizPage() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
-  const [answer, setAnswer] = useState<any>("");
+  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestError, setGuestError] = useState('');
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestMobile, setGuestMobile] = useState('');
 
   // --- Matching UI state ---
   const [shuffledRight, setShuffledRight] = useState<string[]>([]);
@@ -35,7 +43,7 @@ export default function LiveQuizPage() {
       // Shuffle right items
       setShuffledRight(right.sort(() => Math.random() - 0.5));
       // Reset answer for this question
-      setAnswer(Array(q.matchingPairs.length).fill(''));
+      setAnswers(prev => ({ ...prev, [q._id]: Array(q.matchingPairs.length).fill('') }));
     }
      
   }, [current, questions]);
@@ -48,10 +56,16 @@ export default function LiveQuizPage() {
         setQuiz(res.data.data);
         const qRes = await liveQuizQuestionAPI.getQuestionsByQuiz(id);
         setQuestions(qRes.data.data || []);
-      } catch (err) {
+        setFetchError(null);
+      } catch (err: any) {
         console.error("Failed to fetch quiz or questions:", err);
         setQuiz(null);
         setQuestions([]);
+        setFetchError(
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to fetch quiz or questions. Please check your connection or try again later."
+        );
       } finally {
         setLoading(false);
       }
@@ -69,6 +83,17 @@ export default function LiveQuizPage() {
 
   if (loading) return <StudentLayout><div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p className="mt-4 text-gray-600">Loading quiz...</p></div></div></StudentLayout>;
   if (!user) return <StudentLayout><div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p className="mt-4 text-gray-600">Loading user...</p></div></div></StudentLayout>;
+  if (fetchError) {
+    return (
+      <StudentLayout>
+        <div className="flex min-h-screen flex-col items-center justify-center p-4">
+          <h1 className="text-xl lg:text-2xl font-bold mb-4 text-center text-red-600">Error Loading Quiz</h1>
+          <p className="mb-4 text-gray-700 text-center">{fetchError}</p>
+          <Button onClick={() => router.push("/dashboard")} className="text-sm lg:text-base">Return to Dashboard</Button>
+        </div>
+      </StudentLayout>
+    );
+  }
   if (!quiz && !loading) {
     return (
       <StudentLayout>
@@ -92,36 +117,73 @@ export default function LiveQuizPage() {
   const q = questions[current];
   if (!q) return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p className="mt-4 text-gray-600">Loading question...</p></div></div>;
 
+  // Update answer state as user answers each question
+  function handleAnswerChange(value: any) {
+    setAnswers(prev => ({ ...prev, [q._id]: value }));
+  }
+
   // Render input based on question type
   function renderInput() {
     switch (q.type) {
-      case 'MCQ':
-        return (
-          <div className="flex flex-col gap-3 mt-4">
-            {q.options.map((opt: string, idx: number) => (
-              <label key={idx} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="answer"
-                  value={opt}
-                  checked={answer === opt}
-                  onChange={() => setAnswer(opt)}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm lg:text-base">{opt}</span>
-              </label>
-            ))}
-          </div>
-        );
+      case 'MCQ': {
+        const isMultiple = Array.isArray(q.correctAnswers) && q.correctAnswers.length > 1;
+        if (isMultiple) {
+          // Multiple-answer MCQ: use checkboxes
+          const selected = Array.isArray(answers[q._id]) ? answers[q._id] : [];
+          const handleCheckbox = (opt: string) => {
+            if (selected.includes(opt)) {
+              handleAnswerChange(selected.filter((o: string) => o !== opt));
+            } else {
+              handleAnswerChange([...selected, opt]);
+            }
+          };
+          return (
+            <div className="flex flex-col gap-3 mt-4">
+              {q.options.map((opt: string, idx: number) => (
+                <label key={idx} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name={`answer-${q._id}`}
+                    value={opt}
+                    checked={selected.includes(opt)}
+                    onChange={() => handleCheckbox(opt)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm lg:text-base">{opt}</span>
+                </label>
+              ))}
+            </div>
+          );
+        } else {
+          // Single-answer MCQ: use radio buttons
+          return (
+            <div className="flex flex-col gap-3 mt-4">
+              {q.options.map((opt: string, idx: number) => (
+                <label key={idx} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="answer"
+                    value={opt}
+                    checked={answers[q._id] === opt}
+                    onChange={() => handleAnswerChange(opt)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm lg:text-base">{opt}</span>
+                </label>
+              ))}
+            </div>
+          );
+        }
+      }
       case 'TF':
         return (
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input type="radio" name="answer" value="true" checked={answer === 'true'} onChange={() => setAnswer('true')} className="h-4 w-4" />
+              <input type="radio" name="answer" value="true" checked={answers[q._id] === 'true'} onChange={() => handleAnswerChange('true')} className="h-4 w-4" />
               <span className="text-sm lg:text-base">True</span>
             </label>
             <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input type="radio" name="answer" value="false" checked={answer === 'false'} onChange={() => setAnswer('false')} className="h-4 w-4" />
+              <input type="radio" name="answer" value="false" checked={answers[q._id] === 'false'} onChange={() => handleAnswerChange('false')} className="h-4 w-4" />
               <span className="text-sm lg:text-base">False</span>
             </label>
           </div>
@@ -132,8 +194,8 @@ export default function LiveQuizPage() {
           <textarea
             className="w-full border rounded-lg p-3 mt-4 text-sm lg:text-base resize-none"
             rows={q.type === 'Long' ? 5 : 3}
-            value={answer}
-            onChange={e => setAnswer(e.target.value)}
+            value={answers[q._id] || ''}
+            onChange={e => handleAnswerChange(e.target.value)}
             placeholder="Type your answer..."
           />
         );
@@ -141,8 +203,8 @@ export default function LiveQuizPage() {
         return (
           <input
             className="w-full border rounded-lg p-3 mt-4 text-sm lg:text-base"
-            value={answer}
-            onChange={e => setAnswer(e.target.value)}
+            value={answers[q._id] || ''}
+            onChange={e => handleAnswerChange(e.target.value)}
             placeholder="Type your answer..."
           />
         );
@@ -151,9 +213,9 @@ export default function LiveQuizPage() {
         const leftItems = pairs.map((pair: any) => pair.itemA);
         // answer: array of selected right items (itemB) for each left item
         const handleSelect = (idx: number, value: string) => {
-          const newAnswer = Array.isArray(answer) ? [...answer] : Array(pairs.length).fill('');
-          newAnswer[idx] = value;
-          setAnswer(newAnswer);
+          const prev = Array.isArray(answers[q._id]) ? [...answers[q._id]] : Array(pairs.length).fill('');
+          prev[idx] = value;
+          handleAnswerChange(prev);
         };
         return (
           <div className="mt-4">
@@ -166,7 +228,7 @@ export default function LiveQuizPage() {
                 <div className="text-sm lg:text-base font-medium">{itemA}</div>
                 <select
                   className="border rounded-lg p-2 w-full text-sm lg:text-base"
-                  value={Array.isArray(answer) ? answer[idx] || '' : ''}
+                  value={Array.isArray(answers[q._id]) ? answers[q._id][idx] || '' : ''}
                   onChange={e => handleSelect(idx, e.target.value)}
                 >
                   <option value="">Select...</option>
@@ -187,8 +249,8 @@ export default function LiveQuizPage() {
             {q.imageUrl && <img src={q.imageUrl} alt="Question" className="mb-3 max-w-full h-auto rounded-lg" />}
             <input
               className="w-full border rounded-lg p-3 text-sm lg:text-base"
-              value={answer}
-              onChange={e => setAnswer(e.target.value)}
+              value={answers[q._id] || ''}
+              onChange={e => handleAnswerChange(e.target.value)}
               placeholder="Type your answer..."
             />
           </div>
@@ -203,24 +265,61 @@ export default function LiveQuizPage() {
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      // You may want to add timeTaken, etc.
-      await api.post('/live-quiz-answers/submit', {
-        quizId: quiz._id,
-        questionId: q._id,
-        answerText: answer,
-        timeTaken: 0 // TODO: implement timer
-      });
-      
-      if (current < questions.length - 1) {
-        setCurrent(current + 1);
-        setAnswer("");
-      } else {
-        // Quiz completed
-        router.push('/result');
+      if (!user) {
+        setShowGuestModal(true);
+        setSubmitting(false);
+        return;
       }
+      // Prepare answers array for ALL questions
+      const answersArray = questions.map((question) => {
+        const ans = answers[question._id];
+        return {
+          questionId: question._id,
+          answerText: Array.isArray(ans) ? ans : ans || '',
+          timeTaken: 0 // TODO: implement timer if needed
+        };
+      });
+      await api.post('/live-quiz-answers/submit-multiple', {
+        quizId: quiz._id,
+        answers: answersArray
+      });
+      router.push('/result');
     } catch (err) {
-      console.error("Failed to submit answer:", err);
-      alert("Failed to submit answer. Please try again.");
+      console.error('Failed to submit answers:', err);
+      alert('Failed to submit answers. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleGuestSubmit() {
+    setGuestError('');
+    if (!guestName.trim() || (!guestEmail.trim() && !guestMobile.trim())) {
+      setGuestError('Full Name and at least Email or Mobile are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const answersArray = questions.map((question) => {
+        const ans = answers[question._id];
+        return {
+          questionId: question._id,
+          answerText: Array.isArray(ans) ? ans : ans || '',
+          timeTaken: 0
+        };
+      });
+      await api.post('/live-quiz-answers/submit-multiple', {
+        quizId: quiz._id,
+        answers: answersArray,
+        isGuest: true,
+        guestName,
+        guestEmail,
+        guestMobile
+      });
+      setShowGuestModal(false);
+      router.push(`/leaderboard/${quiz._id}`); // or Thank You page
+    } catch (err) {
+      setGuestError('Failed to submit answers. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -228,6 +327,36 @@ export default function LiveQuizPage() {
 
   return (
     <StudentLayout>
+      {/* Guest Info Modal */}
+      <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter Your Details to Submit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Full Name (required)"
+              value={guestName}
+              onChange={e => setGuestName(e.target.value)}
+            />
+            <Input
+              placeholder="Email (optional)"
+              value={guestEmail}
+              onChange={e => setGuestEmail(e.target.value)}
+            />
+            <Input
+              placeholder="Mobile (optional)"
+              value={guestMobile}
+              onChange={e => setGuestMobile(e.target.value)}
+            />
+            <div className="text-xs text-gray-500">At least one of Email or Mobile is required.</div>
+            {guestError && <div className="text-red-500 text-sm">{guestError}</div>}
+            <Button className="w-full" onClick={handleGuestSubmit} disabled={submitting}>
+              {submitting ? 'Submitting...' : 'Submit Answers'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="max-w-4xl mx-auto p-4 lg:p-6">
         {/* Quiz Status */}
         <div className="mb-4 lg:mb-6">
@@ -279,11 +408,8 @@ export default function LiveQuizPage() {
             <div className="flex gap-2 lg:gap-3">
               {current < questions.length - 1 ? (
                 <Button
-                  onClick={() => {
-                    setCurrent(current + 1);
-                    setAnswer("");
-                  }}
-                  disabled={!answer}
+                  onClick={() => setCurrent(current + 1)}
+                  disabled={!answers[q._id]}
                   className="text-sm lg:text-base"
                 >
                   Next
@@ -291,7 +417,7 @@ export default function LiveQuizPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!answer || submitting}
+                  disabled={Object.keys(answers).length !== questions.length || submitting}
                   className="text-sm lg:text-base"
                 >
                   {submitting ? "Submitting..." : "Submit Quiz"}

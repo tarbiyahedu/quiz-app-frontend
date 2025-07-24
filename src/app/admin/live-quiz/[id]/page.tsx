@@ -152,7 +152,7 @@ export default function AdminLiveQuizDetailPage() {
   if (!quiz) return <div>Loading quiz details...</div>;
 
   // Generate join link and code
-  const joinLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/join/online-game/${quiz.code || quizId}`;
+  const joinLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/join/${quiz.code || quizId}`;
   const joinCode = quiz.code || quizId.slice(-6).toUpperCase();
   const invitationText = `Join the quiz: ${quiz.title}\nLink: ${joinLink}\nCode: ${joinCode}`;
 
@@ -326,7 +326,10 @@ export default function AdminLiveQuizDetailPage() {
               <Label>Shareable Link</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Input type="text" value={joinLink} readOnly className="text-sm" />
-                <Button size="icon" variant="outline" onClick={() => navigator.clipboard.writeText(joinLink)}>
+                <Button size="icon" variant="outline" className="cursor-pointer" onClick={() => {
+                  navigator.clipboard.writeText(joinLink);
+                  toast({ title: 'Link copied!', description: 'Shareable link copied to clipboard.', duration: 2000 });
+                }}>
                   <Copy className="w-4 h-4" />
                 </Button>
               </div>
@@ -357,7 +360,10 @@ export default function AdminLiveQuizDetailPage() {
             
             <Button 
               className="w-full bg-[#FAB364] text-[#0E2647] font-bold" 
-              onClick={() => navigator.clipboard.writeText(invitationText)}
+              onClick={() => {
+                navigator.clipboard.writeText(invitationText);
+                toast({ title: 'Invitation copied!', description: 'Invitation text copied to clipboard.', duration: 2000 });
+              }}
             >
               Copy Invitation
             </Button>

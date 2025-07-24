@@ -42,12 +42,6 @@ const adminSidebarItems: SidebarItem[] = [
     href: '/admin/live-quiz'
   },
   {
-    id: 'assignment-quiz',
-    label: 'Assignment Quiz',
-    icon: <FileText className="h-4 w-4" />,
-    href: '/admin/assignment-quiz'
-  },
-  {
     id: 'results-overview',
     label: 'Results Overview',
     icon: <BarChart3 className="h-4 w-4" />,
@@ -93,22 +87,10 @@ const studentSidebarItems: SidebarItem[] = [
     href: '/live-quiz'
   },
   {
-    id: 'assignment-quiz',
-    label: 'Assignment Quiz',
-    icon: <FileText className="h-4 w-4" />,
-    href: '/assignment-quiz'
-  },
-  {
     id: 'complete-quiz',
     label: 'Complete Quiz',
     icon: <BookOpen className="h-4 w-4" />,
     href: '/complete-quiz'
-  },
-  {
-    id: 'favorite-quiz',
-    label: 'Favorite Quiz',
-    icon: <Heart className="h-4 w-4" />,
-    href: '/favorite-quiz'
   },
   {
     id: 'result',

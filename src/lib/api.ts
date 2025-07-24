@@ -105,6 +105,7 @@ export const liveQuizAPI = {
   getCompletedQuizDetails: (quizId: string) => api.get(`/live-quiz-answers/completed/${quizId}`),
   getAllCompletedQuizzes: () => api.get('/live-quiz-answers/all-completed'),
   getQuizStatistics: (params?: any) => api.get('/live-quizzes/statistics', { params }),
+  getQuizByCode: (code: string) => api.get(`/live-quizzes/code/${code}`),
 };
 
 // Live Quiz Questions API
@@ -134,40 +135,12 @@ export const liveLeaderboardAPI = {
   updateScore: (data: any) => api.post('/live-leaderboard', data),
 };
 
-// Assignment API
-export const assignmentAPI = {
-  getAllAssignments: (params?: any) => api.get('/assignment-quizzes', { params }),
-  getAssignmentById: (id: string) => api.get(`/assignment-quizzes/${id}`),
-  createAssignment: (data: any) => api.post('/assignment-quizzes', data),
-  updateAssignment: (id: string, data: any) => api.put(`/assignment-quizzes/${id}`, data),
-  deleteAssignment: (id: string) => api.delete(`/assignment-quizzes/${id}`),
-  getCompletedAssignments: () => api.get('/assignment-answers/completed'),
-  getCompletedAssignmentDetails: (assignmentId: string) => api.get(`/assignment-answers/completed/${assignmentId}`),
+export const quizLeaderboardAPI = {
+  getPublicLeaderboard: (quizId: string, filter: string = 'all') => api.get(`/live-leaderboard/quiz/${quizId}/public?filter=${filter}`),
 };
 
-// Assignment Questions API
-export const assignmentQuestionAPI = {
-  getQuestionsByAssignment: (assignmentId: string) => 
-    api.get(`/assignment-questions/assignment/${assignmentId}`),
-  createQuestion: (data: any) => api.post('/assignment-questions', data),
-  updateQuestion: (id: string, data: any) => api.put(`/assignment-questions/${id}`, data),
-  deleteQuestion: (id: string) => api.delete(`/assignment-questions/${id}`),
-};
-
-// Assignment Answers API
-export const assignmentAnswerAPI = {
-  submitAnswer: (data: any) => api.post('/assignment-answers', data),
-  getAnswersByAssignment: (assignmentId: string) => 
-    api.get(`/assignment-answers/assignment/${assignmentId}`),
-  getAnswersByUser: (userId: string) => api.get(`/assignment-answers/user/${userId}`),
-  gradeAnswer: (id: string, data: any) => api.put(`/assignment-answers/${id}/grade`, data),
-};
-
-// Assignment Leaderboard API
-export const assignmentLeaderboardAPI = {
-  getLeaderboard: (assignmentId: string) => 
-    api.get(`/assignment-leaderboard/assignment/${assignmentId}`),
-  updateScore: (data: any) => api.post('/assignment-leaderboard', data),
+export const publicQuizAPI = {
+  getAllPublic: () => api.get('/live-quizzes/public'),
 };
 
 export default api; 

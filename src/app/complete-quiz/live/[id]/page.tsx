@@ -19,6 +19,8 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { liveQuizAPI } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type QuizAnswer = {
   questionId: string;
@@ -34,6 +36,8 @@ type QuizAnswer = {
   imageUrl?: string;
   videoUrl?: string;
   timeTaken: number;
+  answered: boolean;
+  explanation?: string;
 };
 
 type QuizDetails = {
@@ -115,6 +119,9 @@ export default function LiveQuizDetailsPage() {
   };
 
   const renderAnswer = (answer: QuizAnswer) => {
+    const isMCQ = answer.questionType === 'MCQ' || answer.questionType === 'mcq';
+    const userAnswersArr = Array.isArray(answer.userAnswer) ? answer.userAnswer : [answer.userAnswer];
+    const correctAnswersArr = Array.isArray(answer.correctAnswer) ? answer.correctAnswer : [answer.correctAnswer];
     const renderQuestionContent = () => {
       if (answer.imageUrl) {
         return (
@@ -138,7 +145,46 @@ export default function LiveQuizDetailsPage() {
 
     const renderOptions = () => {
       if (!answer.questionOptions || answer.questionOptions.length === 0) return null;
-      
+      if (isMCQ) {
+        return (
+          <div className="space-y-2 mb-4">
+            {answer.questionOptions.map((option, index) => {
+              const isCorrect = correctAnswersArr.includes(option);
+              const isSelected = userAnswersArr.includes(option);
+              return (
+                <div
+                  key={index}
+                  className={`flex items-center gap-2 p-3 rounded-lg border text-base ${
+                    isCorrect && isSelected
+                      ? 'bg-green-100 border-green-400'
+                      : isCorrect
+                      ? 'bg-green-50 border-green-300'
+                      : isSelected
+                      ? 'bg-blue-50 border-blue-300'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    readOnly
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  <span className="font-medium mr-2">{String.fromCharCode(65 + index)}.</span>
+                  <span>{option}</span>
+                  {isCorrect && (
+                    <CheckCircle className="inline ml-2 h-4 w-4 text-green-500" />
+                  )}
+                  {isSelected && !isCorrect && (
+                    <XCircle className="inline ml-2 h-4 w-4 text-red-500" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+      // Fallback for other types
       return (
         <div className="space-y-2 mb-4">
           {answer.questionOptions.map((option, index) => (
@@ -184,49 +230,109 @@ export default function LiveQuizDetailsPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Question {answer.order}</CardTitle>
             <div className="flex items-center space-x-2">
-              <Badge variant={answer.isCorrect ? "default" : "destructive"}>
-                {answer.isCorrect ? "Correct" : "Incorrect"}
-              </Badge>
-              <Badge variant="outline">{answer.score}/{answer.marks} points</Badge>
+              {answer.answered ? (
+                <>
+                  <Badge variant={answer.isCorrect ? "default" : "destructive"}>
+                    {answer.isCorrect ? "Correct" : "Incorrect"}
+                  </Badge>
+                  <Badge variant="outline">{answer.score}/{answer.marks} points</Badge>
+                </>
+              ) : (
+                <Badge variant="secondary">Not Answered</Badge>
+              )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {renderQuestionContent()}
-          <div className="mb-4">
-            <h4 className="font-medium mb-2">{answer.questionText}</h4>
-            {renderOptions()}
+          <div className="mb-2">
+            <h4 className="font-medium mb-1">Question</h4>
+            <div className="mb-2 text-[#0E2647] font-semibold">{answer.questionText}</div>
           </div>
-          
-          {answer.questionType !== 'MCQ' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="font-medium">Your Answer:</span>
-                <span className={answer.isCorrect ? "text-green-600" : "text-red-600"}>
-                  {answer.userAnswer && answer.userAnswer.trim() !== '' 
-                    ? answer.userAnswer 
-                    : "Answer submitted (empty)"
-                  }
-                </span>
-              </div>
-              {!answer.isCorrect && (
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <span className="font-medium">Correct Answer:</span>
-                  <span className="text-green-600">{answer.correctAnswer}</span>
-                </div>
-              )}
+          {renderOptions()}
+          <div className="mb-2">
+            <h4 className="font-medium mb-1">Your Answer</h4>
+            <div className={answer.isCorrect ? "text-green-700" : "text-red-700"}>
+              {isMCQ
+                ? userAnswersArr.length > 0
+                  ? userAnswersArr.map((ans, i) => <span key={i} className="inline-block mr-2">{ans}</span>)
+                  : <span className="text-gray-400">Not answered</span>
+                : answer.userAnswer && answer.userAnswer.toString().trim() !== ''
+                  ? answer.userAnswer.toString()
+                  : <span className="text-gray-400">Not answered</span>
+              }
+            </div>
+          </div>
+          <div className="mb-2">
+            <h4 className="font-medium mb-1">Correct Answer</h4>
+            <div className="text-blue-700">
+              {isMCQ
+                ? correctAnswersArr.length > 0
+                  ? correctAnswersArr.map((ans, i) => <span key={i} className="inline-block mr-2">{ans}</span>)
+                  : <span className="text-gray-400">None</span>
+                : answer.correctAnswer && answer.correctAnswer.toString()
+              }
+            </div>
+          </div>
+          {answer.explanation && (
+            <div className="mt-2 p-3 rounded-lg bg-gray-50">
+              <h5 className="font-medium mb-1">Explanation</h5>
+              <p className="text-sm text-gray-700">{answer.explanation}</p>
             </div>
           )}
-          
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center space-x-1">
-              <Clock className="h-4 w-4" />
-              <span>Time: {formatTime(answer.timeTaken)}</span>
+          {answer.answered && answer.timeTaken > 0 && (
+            <div className="mt-2 flex items-center text-sm text-gray-600">
+              <Clock className="h-4 w-4 mr-2" />
+              Time taken: {formatTime(answer.timeTaken)}
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     );
+  };
+
+  const handleDownloadPDF = () => {
+    if (!quizDetails) return;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(quizDetails.title || 'Quiz Result', 14, 18);
+    doc.setFontSize(12);
+    doc.text(`Score: ${quizDetails.score}%`, 14, 28);
+    doc.text(`Correct: ${quizDetails.correctAnswers}/${quizDetails.totalQuestions}`, 14, 36);
+    doc.text(`Time Taken: ${quizDetails.timeTaken} min`, 14, 44);
+    doc.text(`Completed: ${formatDate(quizDetails.completionDate)}`, 14, 52);
+    doc.text(`Department: ${quizDetails.department}`, 14, 60);
+    doc.text(`Type: ${quizDetails.type}`, 14, 68);
+    // Table of questions
+    autoTable(doc, {
+      startY: 75,
+      head: [[
+        'Q#',
+        'Question',
+        'Your Answer',
+        'Correct Answer',
+        'Correct?',
+        'Score'
+      ]],
+      body: quizDetails.answers.map((a, idx) => [
+        a.order,
+        a.questionText,
+        a.userAnswer && a.userAnswer.toString(),
+        a.correctAnswer && a.correctAnswer.toString(),
+        a.isCorrect ? 'Yes' : 'No',
+        `${a.score}/${a.marks}`
+      ]),
+      styles: { fontSize: 9, cellWidth: 'wrap' },
+      headStyles: { fillColor: [22, 82, 147] },
+      columnStyles: {
+        1: { cellWidth: 60 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 18 }
+      }
+    });
+    doc.save(`${quizDetails.title || 'quiz-result'}.pdf`);
   };
 
   if (loading) {
@@ -271,6 +377,25 @@ export default function LiveQuizDetailsPage() {
             <h1 className="text-3xl font-bold text-[#0E2647]">{quizDetails.title}</h1>
             <p className="text-gray-600 mt-2">{quizDetails.description}</p>
           </div>
+        </div>
+
+        {/* Add a summary card at the top */}
+        <div className="mb-6">
+          <Card>
+            <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between py-6 gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#0E2647] mb-1">Quiz Summary</h2>
+                <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                  <span><b>Score:</b> <span className={getScoreColor(quizDetails.score)}>{quizDetails.score}%</span></span>
+                  <span><b>Correct:</b> {quizDetails.correctAnswers}/{quizDetails.totalQuestions}</span>
+                  <span><b>Time Taken:</b> {quizDetails.timeTaken} min</span>
+                  <span><b>Completed:</b> {formatDate(quizDetails.completionDate)}</span>
+                </div>
+              </div>
+              {/* Placeholder for PDF export button */}
+              <Button variant="outline" className="mt-4 md:mt-0" onClick={handleDownloadPDF}>Download Result as PDF</Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quiz Summary */}

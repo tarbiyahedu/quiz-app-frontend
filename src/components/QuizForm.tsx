@@ -44,9 +44,8 @@ type Quiz = {
   _id?: string;
   title: string;
   description: string;
-  timeLimit: number;
-  schedule: string;
   department: string;
+  isPublic?: boolean;
   questions: Question[];
 };
 
@@ -139,13 +138,26 @@ const MCQEditor = ({ question, onChange }: { question: Question; onChange: (q: Q
 
   const removeOption = (index: number) => {
     const newOptions = question.options.filter((_, i) => i !== index);
-    onChange({ ...question, options: newOptions });
+    // Also remove from correctAnswers if present
+    const newCorrectAnswers = (question.correctAnswers || []).filter(ans => ans !== String.fromCharCode(65 + index));
+    onChange({ ...question, options: newOptions, correctAnswers: newCorrectAnswers });
   };
 
   const updateOption = (index: number, value: string) => {
     const newOptions = [...question.options];
     newOptions[index] = value;
     onChange({ ...question, options: newOptions });
+  };
+
+  const toggleCorrect = (index: number) => {
+    const letter = String.fromCharCode(65 + index);
+    let newCorrect = Array.isArray(question.correctAnswers) ? [...question.correctAnswers] : [];
+    if (newCorrect.includes(letter)) {
+      newCorrect = newCorrect.filter(l => l !== letter);
+    } else {
+      newCorrect.push(letter);
+    }
+    onChange({ ...question, correctAnswers: newCorrect });
   };
 
   return (
@@ -169,6 +181,13 @@ const MCQEditor = ({ question, onChange }: { question: Question; onChange: (q: Q
               onChange={(e) => updateOption(index, e.target.value)}
               placeholder={`Option ${String.fromCharCode(65 + index)}`}
             />
+            <input
+              type="checkbox"
+              checked={Array.isArray(question.correctAnswers) && question.correctAnswers.includes(String.fromCharCode(65 + index))}
+              onChange={() => toggleCorrect(index)}
+              className="h-4 w-4 cursor-pointer"
+              aria-label="Mark as correct"
+            />
             <Button
               type="button"
               variant="outline"
@@ -185,19 +204,10 @@ const MCQEditor = ({ question, onChange }: { question: Question; onChange: (q: Q
         </Button>
       </div>
       <div>
-        <Label>Correct Answer</Label>
-        <Select value={question.answer} onValueChange={(value) => onChange({ ...question, answer: value })}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select correct option" />
-          </SelectTrigger>
-          <SelectContent>
-            {question.options.map((option, index) => (
-              <SelectItem key={index} value={String.fromCharCode(65 + index)}>
-                {String.fromCharCode(65 + index)}. {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label>Correct Answer(s)</Label>
+        <div className="text-sm text-gray-600">
+          Select one or more correct options using the checkboxes above.
+        </div>
       </div>
     </div>
   );
@@ -498,9 +508,8 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
   const [quiz, setQuiz] = useState<Quiz>(initialQuiz || {
     title: "",
     description: "",
-    timeLimit: 30,
-    schedule: "",
     department: "",
+    isPublic: false,
     questions: [],
   });
   const [originalQuestionIds, setOriginalQuestionIds] = useState<string[]>([]);
@@ -525,13 +534,12 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
   useEffect(() => {
     setQuiz(
       initialQuiz
-        ? { ...initialQuiz, questions: Array.isArray(initialQuiz.questions) ? initialQuiz.questions : [] }
+        ? { ...initialQuiz, questions: Array.isArray(initialQuiz.questions) ? initialQuiz.questions : [], isPublic: initialQuiz.isPublic ?? false }
         : {
             title: "",
             description: "",
-            timeLimit: 30,
-            schedule: "",
             department: "",
+            isPublic: false,
             questions: [],
           }
     );
@@ -562,7 +570,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
       ...prev,
       type: questionDraft.type,
       options: questionDraft.type === "mcq" ? ["", "", "", ""] : prev.options,
-      correctAnswers: questionDraft.type === "fill" ? [""] : prev.correctAnswers,
+      correctAnswers: questionDraft.type === "mcq" ? [""] : prev.correctAnswers,
       matchingPairs: questionDraft.type === "matching" ? [{ itemA: "", itemB: "" }] : prev.matchingPairs,
       correctSequence: questionDraft.type === "ordering" ? ["", ""] : prev.correctSequence,
     }));
@@ -585,9 +593,9 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           isValid = false;
           errorMessage = "MCQ questions must have at least 2 options";
         }
-        if (!questionDraft.answer) {
+        if (!questionDraft.correctAnswers || questionDraft.correctAnswers.length === 0) {
           isValid = false;
-          errorMessage = "Please select the correct answer";
+          errorMessage = "Please select at least one correct answer";
         }
         break;
       case "truefalse":
@@ -689,10 +697,9 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         const quizRes = await api.post("/live-quizzes", {
           title: quiz.title,
           description: quiz.description,
-          timeLimit: quiz.timeLimit,
-          schedule: quiz.schedule,
           totalQuestions: quiz.questions.length,
           department: quiz.department,
+          isPublic: quiz.isPublic,
           status: 'draft', // Create quiz in draft status
         });
         const quizData = quizRes.data;
@@ -702,10 +709,9 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         await api.put(`/live-quizzes/${quiz._id}`, {
           title: quiz.title,
           description: quiz.description,
-          timeLimit: quiz.timeLimit,
-          schedule: quiz.schedule,
           totalQuestions: quiz.questions.length,
           department: quiz.department,
+          isPublic: quiz.isPublic,
         });
         quizId = quiz._id;
       }
@@ -734,7 +740,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         switch (q.type) {
           case "mcq":
             payload.options = q.options.filter(opt => opt.trim());
-            payload.correctAnswer = q.answer;
+            payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
             break;
           case "truefalse":
             payload.correctAnswer = q.answer;
@@ -755,7 +761,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
             // Add the underlying question data
             if (q.mediaQuestionType === "mcq") {
               payload.options = q.options.filter(opt => opt.trim());
-              payload.correctAnswer = q.answer;
+              payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
             } else if (q.mediaQuestionType === "tf") {
               payload.correctAnswer = q.answer;
             } else {
@@ -816,10 +822,9 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         const quizRes = await api.post("/live-quizzes", {
           title: quiz.title,
           description: quiz.description,
-          timeLimit: quiz.timeLimit,
-          schedule: quiz.schedule,
           totalQuestions: quiz.questions.length,
           department: quiz.department,
+          isPublic: quiz.isPublic,
           status: 'draft', // Create quiz in draft status
         });
         const quizData = quizRes.data;
@@ -841,7 +846,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           switch (q.type) {
             case "mcq":
               payload.options = q.options.filter(opt => opt.trim());
-              payload.correctAnswer = q.answer;
+              payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
               break;
             case "truefalse":
               payload.correctAnswer = q.answer;
@@ -861,7 +866,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
               if (q.videoUrl) payload.videoUrl = q.videoUrl;
               if (q.mediaQuestionType === "mcq") {
                 payload.options = q.options.filter(opt => opt.trim());
-                payload.correctAnswer = q.answer;
+                payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
               } else if (q.mediaQuestionType === "tf") {
                 payload.correctAnswer = q.answer;
               } else {
@@ -924,15 +929,11 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
             <Input value={quiz.description} onChange={e => setQuiz(q => ({ ...q, description: e.target.value }))} />
           </div>
           <div>
-            <Label>Time Limit (minutes)</Label>
-            <Input type="number" min={1} value={quiz.timeLimit} onChange={e => setQuiz(q => ({ ...q, timeLimit: Number(e.target.value) }))} />
-          </div>
-          <div>
             <Label>Department</Label>
             <select
               value={quiz.department}
               onChange={e => setQuiz(q => ({ ...q, department: e.target.value }))}
-              className="w-full border rounded px-2 py-1"
+              className="w-full border rounded px-3 py-2 text-base h-11"
               required
             >
               <option value="" disabled>Select Department</option>
@@ -941,9 +942,16 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
               ))}
             </select>
           </div>
-          <div>
-            <Label>Schedule (optional)</Label>
-            <Input type="datetime-local" value={quiz.schedule} onChange={e => setQuiz(q => ({ ...q, schedule: e.target.value }))} />
+          <div className="flex items-center mt-2">
+            <input
+              type="checkbox"
+              id="isPublic"
+              checked={!!quiz.isPublic}
+              onChange={e => setQuiz(q => ({ ...q, isPublic: e.target.checked }))}
+              className="mr-2 w-5 h-5 accent-[#0E2647]"
+              style={{ minWidth: '1.25rem', minHeight: '1.25rem' }}
+            />
+            <Label htmlFor="isPublic" className="text-base font-medium">Make Public</Label>
           </div>
         </div>
       </div>
@@ -973,7 +981,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
                     <div className="text-sm text-gray-600">
                       Options: {q.options.filter(opt => opt.trim()).map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`).join(', ')}
                       <br />
-                      Correct: {q.answer}
+                      Correct: {q.correctAnswers.map(ans => String.fromCharCode(65 + ans.charCodeAt(0) - 65)).join(', ')}
                     </div>
                   )}
                   {q.type === "truefalse" && (
@@ -1055,13 +1063,6 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           disabled={saving}
         >
           {saving ? "Saving..." : mode === "edit" ? "Update Quiz" : "Save Quiz"}
-        </Button>
-        <Button 
-          className="bg-green-700 hover:bg-green-800 text-white" 
-          onClick={handleStartLive} 
-          disabled={saving}
-        >
-          {saving ? "Starting..." : "Start Live Now"}
         </Button>
       </div>
       

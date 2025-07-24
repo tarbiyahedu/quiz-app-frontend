@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Play, ArrowRight, Loader2 } from "lucide-react";
-import { liveQuizAPI, assignmentAPI } from "@/lib/api";
+import { liveQuizAPI } from "@/lib/api";
 
 export default function Join() {
   const [code, setCode] = useState("");
@@ -27,26 +27,24 @@ export default function Join() {
 
     setIsLoading(true);
     try {
-      // Try to find live quiz first
+      // Try to find live quiz by ID first
       try {
         const liveResponse = await liveQuizAPI.getQuizById(code);
-        if (liveResponse.data.quiz) {
-          router.push(`/quiz/${code}/live`);
+        if (liveResponse.data.data) {
+          router.push(`/live-quiz/${liveResponse.data.data._id}`);
           return;
         }
       } catch (error) {
-        // Live quiz not found, try assignment
-      }
-
-      // Try to find assignment quiz
-      try {
-        const assignmentResponse = await assignmentAPI.getAssignmentById(code);
-        if (assignmentResponse.data.assignment) {
-          router.push(`/quiz/${code}/take`);
-          return;
+        // Not found by ID, try by code
+        try {
+          const codeResponse = await liveQuizAPI.getQuizByCode(code);
+          if (codeResponse.data.data) {
+            router.push(`/live-quiz/${codeResponse.data.data._id}`);
+            return;
+          }
+        } catch (error) {
+          // Not found by code, try assignment
         }
-      } catch (error) {
-        // Assignment not found
       }
 
       // If we get here, no quiz was found

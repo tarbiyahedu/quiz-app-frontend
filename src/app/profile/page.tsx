@@ -53,6 +53,24 @@ export default function ProfilePage() {
     });
   }, []);
 
+  useEffect(() => {
+    // Always fetch the latest user data when visiting the profile page
+    async function refreshUser() {
+      try {
+        if (!user) return;
+        const response = await userAPI.getUserById(user._id);
+        if (response.data && response.data.data) {
+          updateUser(response.data.data);
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+    if (user && user._id) {
+      refreshUser();
+    }
+  }, []);
+
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">

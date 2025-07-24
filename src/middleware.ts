@@ -22,7 +22,6 @@ export function middleware(request: NextRequest) {
     '/live-quiz',
     '/assignment-quiz',
     '/complete-quiz',
-    '/favorite-quiz',
     '/result',
     '/settings'
   ];
