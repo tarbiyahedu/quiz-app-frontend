@@ -20,7 +20,6 @@ export function middleware(request: NextRequest) {
     '/dashboard',
     '/profile',
     '/live-quiz',
-    '/assignment-quiz',
     '/complete-quiz',
     '/result',
     '/settings'

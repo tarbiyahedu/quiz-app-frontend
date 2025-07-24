@@ -147,8 +147,7 @@ The frontend integrates with the backend API through the following endpoints:
 
 - **Authentication**: `/api/users/login`, `/api/users/register`, `/api/users/google-login`
 - **Live Quizzes**: `/api/live-quizzes/*`
-- **Assignment Quizzes**: `/api/assignments/*`
-- **Leaderboards**: `/api/live-leaderboard/*`, `/api/assignment-leaderboard/*`
+- **Leaderboards**: `/api/live-leaderboard/*`
 - **User Management**: `/api/users/*`
 
 ## Features in Development

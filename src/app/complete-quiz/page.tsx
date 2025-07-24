@@ -107,8 +107,6 @@ export default function CompleteQuizPage() {
   const handleViewDetails = (quiz: CompletedQuiz) => {
     if (quiz.type === 'Live Quiz') {
       router.push(`/complete-quiz/live/${quiz.id}`);
-    } else {
-      router.push(`/complete-quiz/assignment/${quiz.id}`);
     }
   };
 
