@@ -152,7 +152,7 @@ export default function AdminLiveQuizDetailPage() {
   if (!quiz) return <div>Loading quiz details...</div>;
 
   // Generate join link and code
-  const joinLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/join/${quiz.code || quizId}`;
+  const joinLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://tarbiyah-live-quiz-app.vercel.app'}/join/${quiz.code || quizId}`;
   const joinCode = quiz.code || quizId.slice(-6).toUpperCase();
   const invitationText = `Join the quiz: ${quiz.title}\nLink: ${joinLink}\nCode: ${joinCode}`;
 

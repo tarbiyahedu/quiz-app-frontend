@@ -35,8 +35,10 @@ api.interceptors.response.use(
       // Handle unauthorized access
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
-        // Only redirect if we're not on the register page
-        if (!window.location.pathname.includes('/register')) {
+        // Only redirect if we're not on public routes or register page
+        const publicRoutes = ['/join', '/complete-quiz/live', '/leaderboard', '/quiz'];
+        const isPublicRoute = publicRoutes.some(route => window.location.pathname.includes(route));
+        if (!window.location.pathname.includes('/register') && !isPublicRoute) {
           window.location.href = '/login';
         }
       }
@@ -91,6 +93,7 @@ export const departmentAPI = {
 export const liveQuizAPI = {
   getAllQuizzes: (params?: any) => api.get('/live-quizzes', { params }),
   getQuizById: (id: string) => api.get(`/live-quizzes/${id}`),
+  getPublicQuizById: (id: string) => api.get(`/live-quizzes/public/${id}`),
   createQuiz: (data: any) => api.post('/live-quizzes', data),
   updateQuiz: (id: string, data: any) => api.put(`/live-quizzes/${id}`, data),
   deleteQuiz: (id: string) => api.delete(`/live-quizzes/${id}`),
@@ -111,6 +114,7 @@ export const liveQuizAPI = {
 // Live Quiz Questions API
 export const liveQuizQuestionAPI = {
   getQuestionsByQuiz: (quizId: string) => api.get(`/live-quiz-questions/${quizId}`),
+  getPublicQuestionsByQuiz: (quizId: string) => api.get(`/live-quiz-questions/public/${quizId}`),
   createQuestion: (data: any) => api.post('/live-quiz-questions', data),
   updateQuestion: (id: string, data: any) => api.put(`/live-quiz-questions/${id}`, data),
   deleteQuestion: (id: string) => api.delete(`/live-quiz-questions/${id}`),
@@ -120,6 +124,7 @@ export const liveQuizQuestionAPI = {
 export const liveQuizAnswerAPI = {
   submitAnswer: (data: any) => api.post('/live-quiz-answers/submit', data),
   submitMultipleAnswers: (data: any) => api.post('/live-quiz-answers/submit-multiple', data),
+  submitMultipleAnswersGuest: (data: any) => api.post('/live-quiz-answers/submit-multiple-guest', data),
   getAnswers: (quizId: string, params?: any) => api.get(`/live-quiz-answers/${quizId}`, { params }),
   updateAnswer: (answerId: string, data: any) => api.put(`/live-quiz-answers/${answerId}`, data),
   deleteAnswer: (answerId: string) => api.delete(`/live-quiz-answers/${answerId}`),

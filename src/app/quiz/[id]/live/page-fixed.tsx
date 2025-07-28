@@ -11,7 +11,6 @@ import StudentLayout from "@/app/layouts/student-layout";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useSocket } from '@/lib/useSocket';
 
 export default function LiveQuizPage() {
   const params = useParams();
@@ -33,6 +32,7 @@ export default function LiveQuizPage() {
 
   // --- Matching UI state ---
   const [shuffledRight, setShuffledRight] = useState<string[]>([]);
+  
   useEffect(() => {
     const q = questions[current];
     if (q && q.type === 'Match' && Array.isArray(q.matchingPairs) && q.matchingPairs.length > 0) {
@@ -42,7 +42,6 @@ export default function LiveQuizPage() {
       // Reset answer for this question
       setAnswers(prev => ({ ...prev, [q._id]: Array(q.matchingPairs.length).fill('') }));
     }
-     
   }, [current, questions]);
 
   useEffect(() => {
@@ -58,14 +57,6 @@ export default function LiveQuizPage() {
           return;
         }
         
-        // Validate quiz ID format (should be a valid MongoDB ObjectId)
-        if (!/^[0-9a-fA-F]{24}$/.test(id)) {
-          console.error('Invalid quiz ID format:', id);
-          setFetchError('Invalid quiz ID format. Please check the URL and try again.');
-          setLoading(false);
-          return;
-        }
-        
         // Use public API for guest users, authenticated API for logged-in users
         let res;
         if (user) {
@@ -73,46 +64,14 @@ export default function LiveQuizPage() {
           res = await api.get(`/live-quizzes/${id}`);
         } else {
           console.log('User is not authenticated, using public API');
-          try {
-            res = await liveQuizAPI.getPublicQuizById(id);
-          } catch (publicError: any) {
-            console.log('Public API failed, trying to use authenticated API as fallback');
-            // If public API fails, try authenticated API as fallback
-            try {
-              res = await api.get(`/live-quizzes/${id}`);
-            } catch (authError: any) {
-              // If both fail, throw the original public error
-              throw publicError;
-            }
-          }
+          res = await liveQuizAPI.getPublicQuizById(id);
         }
         
-        console.log('Quiz API response:', res);
         setQuiz(res.data.data);
         console.log('Quiz data received:', res.data.data);
         
-        // Use appropriate API for questions based on user authentication
-        console.log('Fetching questions for quiz ID:', id);
-        let qRes;
-        if (user) {
-          console.log('User is authenticated, using authenticated questions API');
-          qRes = await liveQuizQuestionAPI.getQuestionsByQuiz(id);
-        } else {
-          console.log('User is not authenticated, using public questions API');
-          try {
-            qRes = await liveQuizQuestionAPI.getPublicQuestionsByQuiz(id);
-          } catch (publicError: any) {
-            console.log('Public questions API failed, trying to use authenticated API as fallback');
-            // If public API fails, try authenticated API as fallback
-            try {
-              qRes = await liveQuizQuestionAPI.getQuestionsByQuiz(id);
-            } catch (authError: any) {
-              // If both fail, throw the original public error
-              throw publicError;
-            }
-          }
-        }
-        console.log('Questions API response:', qRes);
+        // Use public API for questions
+        const qRes = await liveQuizQuestionAPI.getPublicQuestionsByQuiz(id);
         console.log('Questions received:', qRes.data.data);
         setQuestions(qRes.data.data || []);
         setFetchError(null);
@@ -122,26 +81,15 @@ export default function LiveQuizPage() {
           status: err?.response?.status,
           statusText: err?.response?.statusText,
           data: err?.response?.data,
-          message: err?.message,
-          config: err?.config
+          message: err?.message
         });
-        
-        // More specific error messages
-        let errorMessage = "Failed to fetch quiz or questions. Please check your connection or try again later.";
-        
-        if (err?.response?.status === 404) {
-          errorMessage = "Quiz not found. Please check the quiz ID or try again later.";
-        } else if (err?.response?.status === 403) {
-          errorMessage = "Access denied. This quiz may not be available for public access. Please contact the quiz administrator.";
-        } else if (err?.response?.status === 500) {
-          errorMessage = "Server error. Please try again later.";
-        } else if (err?.message) {
-          errorMessage = err.message;
-        }
-        
         setQuiz(null);
         setQuestions([]);
-        setFetchError(errorMessage);
+        setFetchError(
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to fetch quiz or questions. Please check your connection or try again later."
+        );
       } finally {
         setLoading(false);
       }
@@ -160,6 +108,7 @@ export default function LiveQuizPage() {
       </div>
     </div>
   );
+  
   if (fetchError) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -171,6 +120,7 @@ export default function LiveQuizPage() {
       </div>
     );
   }
+  
   if (!quiz && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -181,6 +131,7 @@ export default function LiveQuizPage() {
       </div>
     );
   }
+  
   if (!questions.length && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -191,6 +142,7 @@ export default function LiveQuizPage() {
       </div>
     );
   }
+  
   const q = questions[current];
   if (!q) return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p className="mt-4 text-gray-600">Loading question...</p></div></div>;
 
@@ -279,88 +231,76 @@ export default function LiveQuizPage() {
       case 'Fill':
         return (
           <input
+            type="text"
             className="w-full border rounded-lg p-3 mt-4 text-sm lg:text-base"
             value={answers[q._id] || ''}
             onChange={e => handleAnswerChange(e.target.value)}
             placeholder="Type your answer..."
           />
         );
-      case 'Match': {
-        const pairs = Array.isArray(q.matchingPairs) ? q.matchingPairs : [];
-        const leftItems = pairs.map((pair: any) => pair.itemA);
-        // answer: array of selected right items (itemB) for each left item
-        const handleSelect = (idx: number, value: string) => {
-          const prev = Array.isArray(answers[q._id]) ? [...answers[q._id]] : Array(pairs.length).fill('');
-          prev[idx] = value;
-          handleAnswerChange(prev);
-        };
+      case 'Match':
         return (
-          <div className="mt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-semibold mb-3 text-sm lg:text-base">
-              <div>Column A</div>
-              <div>Column B (Select Match)</div>
-            </div>
-            {leftItems.map((itemA: string, idx: number) => (
-              <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 items-center">
-                <div className="text-sm lg:text-base font-medium">{itemA}</div>
+          <div className="mt-4 space-y-4">
+            {q.matchingPairs.map((pair: any, idx: number) => (
+              <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
+                <span className="text-sm lg:text-base font-medium min-w-[100px]">{pair.itemA}</span>
+                <span className="text-sm lg:text-base">→</span>
                 <select
-                  className="border rounded-lg p-2 w-full text-sm lg:text-base"
-                  value={Array.isArray(answers[q._id]) ? answers[q._id][idx] || '' : ''}
-                  onChange={e => handleSelect(idx, e.target.value)}
+                  className="flex-1 border rounded-lg p-2 text-sm lg:text-base"
+                  value={answers[q._id]?.[idx] || ''}
+                  onChange={(e) => {
+                    const newAnswers = [...(answers[q._id] || Array(q.matchingPairs.length).fill(''))];
+                    newAnswers[idx] = e.target.value;
+                    handleAnswerChange(newAnswers);
+                  }}
                 >
-                  <option value="">Select...</option>
-                  {shuffledRight.map((itemB, j) => (
-                    <option key={j} value={itemB}>{itemB}</option>
+                  <option value="">Select answer</option>
+                  {shuffledRight.map((rightItem, rightIdx) => (
+                    <option key={rightIdx} value={rightItem}>
+                      {rightItem}
+                    </option>
                   ))}
                 </select>
               </div>
             ))}
           </div>
         );
-      }
-      case 'Ordering':
-        return <div className="mt-4 text-sm lg:text-base">(Ordering UI not implemented)</div>;
-      case 'Image':
-        return (
-          <div className="mt-4">
-            {q.imageUrl && <img src={q.imageUrl} alt="Question" className="mb-3 max-w-full h-auto rounded-lg" />}
-            <input
-              className="w-full border rounded-lg p-3 text-sm lg:text-base"
-              value={answers[q._id] || ''}
-              onChange={e => handleAnswerChange(e.target.value)}
-              placeholder="Type your answer..."
-            />
-          </div>
-        );
-      case 'Media':
-        return <div className="mt-4 text-sm lg:text-base">(Media question UI not implemented)</div>;
       default:
-        return null;
+        return (
+          <textarea
+            className="w-full border rounded-lg p-3 mt-4 text-sm lg:text-base resize-none"
+            rows={3}
+            value={answers[q._id] || ''}
+            onChange={e => handleAnswerChange(e.target.value)}
+            placeholder="Type your answer..."
+          />
+        );
     }
   }
 
   async function handleSubmit() {
+    if (!user) {
+      setShowGuestModal(true);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      if (!user) {
-        setShowGuestModal(true);
-        setSubmitting(false);
-        return;
-      }
-      // Prepare answers array for ALL questions
       const answersArray = questions.map((question) => {
         const ans = answers[question._id];
         return {
           questionId: question._id,
           answerText: Array.isArray(ans) ? ans : ans || '',
-          timeTaken: 0 // TODO: implement timer if needed
+          timeTaken: 0
         };
       });
+
       await api.post('/live-quiz-answers/submit-multiple', {
         quizId: quiz._id,
-        answers: answersArray
+        answers: answersArray,
       });
-      router.push('/result');
+
+      router.push(`/leaderboard/${quiz._id}`);
     } catch (err) {
       console.error('Failed to submit answers:', err);
       alert('Failed to submit answers. Please try again.');

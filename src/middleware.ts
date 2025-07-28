@@ -20,9 +20,16 @@ export function middleware(request: NextRequest) {
     '/dashboard',
     '/profile',
     '/live-quiz',
-    '/complete-quiz',
     '/result',
     '/settings'
+  ];
+
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    '/join',
+    '/complete-quiz/live',
+    '/leaderboard',
+    '/quiz'
   ];
 
   // Check if the current path is an admin route
@@ -30,6 +37,14 @@ export function middleware(request: NextRequest) {
   
   // Check if the current path is a student route
   const isStudentRoute = studentRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
+
+  // Check if the current path is a public route
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
+
+  // Allow public routes without authentication
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
 
   if (isAdminRoute) {
     // If no auth token, redirect to login
