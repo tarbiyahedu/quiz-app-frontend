@@ -220,7 +220,7 @@ export default function LiveQuizPage() {
                 <label key={idx} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
-                    name={`answer-${q._id}`}
+                    name={`answer-${q._id}`} // Unique name per question
                     value={opt}
                     checked={selected.includes(opt)}
                     onChange={() => handleCheckbox(opt)}
@@ -239,7 +239,7 @@ export default function LiveQuizPage() {
                 <label key={idx} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="radio"
-                    name="answer"
+                    name={`answer-${q._id}`} // Unique name per question
                     value={opt}
                     checked={answers[q._id] === opt}
                     onChange={() => handleAnswerChange(opt)}
@@ -256,17 +256,18 @@ export default function LiveQuizPage() {
         return (
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input type="radio" name="answer" value="true" checked={answers[q._id] === 'true'} onChange={() => handleAnswerChange('true')} className="h-4 w-4" />
+              <input type="radio" name={`answer-${q._id}`} value="true" checked={answers[q._id] === 'true'} onChange={() => handleAnswerChange('true')} className="h-4 w-4" />
               <span className="text-sm lg:text-base">True</span>
             </label>
             <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-              <input type="radio" name="answer" value="false" checked={answers[q._id] === 'false'} onChange={() => handleAnswerChange('false')} className="h-4 w-4" />
+              <input type="radio" name={`answer-${q._id}`} value="false" checked={answers[q._id] === 'false'} onChange={() => handleAnswerChange('false')} className="h-4 w-4" />
               <span className="text-sm lg:text-base">False</span>
             </label>
           </div>
         );
       case 'Short':
       case 'Long':
+        // If you still experience the one-character bug, check for any forced focus/blur logic or state resets elsewhere.
         return (
           <textarea
             className="w-full border rounded-lg p-3 mt-4 text-sm lg:text-base resize-none"
@@ -350,9 +351,16 @@ export default function LiveQuizPage() {
       // Prepare answers array for ALL questions
       const answersArray = questions.map((question) => {
         const ans = answers[question._id];
+        // For MCQ: send array for multiple-answer, string for single-answer
+        let answerText = ans;
+        if (question.type === 'MCQ') {
+          const isMultiple = Array.isArray(question.correctAnswers) && question.correctAnswers.length > 1;
+          if (isMultiple && !Array.isArray(ans)) answerText = ans ? [ans] : [];
+          if (!isMultiple && Array.isArray(ans)) answerText = ans[0] || '';
+        }
         return {
           questionId: question._id,
-          answerText: Array.isArray(ans) ? ans : ans || '',
+          answerText,
           timeTaken: 0 // TODO: implement timer if needed
         };
       });
@@ -379,9 +387,16 @@ export default function LiveQuizPage() {
     try {
       const answersArray = questions.map((question) => {
         const ans = answers[question._id];
+        // For MCQ: send array for multiple-answer, string for single-answer
+        let answerText = ans;
+        if (question.type === 'MCQ') {
+          const isMultiple = Array.isArray(question.correctAnswers) && question.correctAnswers.length > 1;
+          if (isMultiple && !Array.isArray(ans)) answerText = ans ? [ans] : [];
+          if (!isMultiple && Array.isArray(ans)) answerText = ans[0] || '';
+        }
         return {
           questionId: question._id,
-          answerText: Array.isArray(ans) ? ans : ans || '',
+          answerText,
           timeTaken: 0
         };
       });
