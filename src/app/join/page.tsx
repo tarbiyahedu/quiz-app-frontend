@@ -31,7 +31,7 @@ export default function Join() {
       try {
         const liveResponse = await liveQuizAPI.getQuizById(code);
         if (liveResponse.data.data) {
-          router.push(`/live-quiz/${liveResponse.data.data._id}`);
+          router.push(`/quiz/${liveResponse.data.data._id}/live`);
           return;
         }
       } catch (error) {
@@ -39,7 +39,7 @@ export default function Join() {
         try {
           const codeResponse = await liveQuizAPI.getQuizByCode(code);
           if (codeResponse.data.data) {
-            router.push(`/live-quiz/${codeResponse.data.data._id}`);
+            router.push(`/quiz/${codeResponse.data.data._id}/live`);
             return;
           }
         } catch (error) {
