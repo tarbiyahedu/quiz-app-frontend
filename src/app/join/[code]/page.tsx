@@ -56,11 +56,13 @@ export default function JoinByCodePage() {
       return;
     }
     try {
-      const res = await liveQuizAPI.guestJoin({
+      const payload = {
         quizId: quiz._id,
         name: guestInfo.name,
-        contact: guestInfo.contact
-      });
+        email,
+        phone
+      };
+      const res = await liveQuizAPI.guestJoin(payload);
       const guestId = res.data.guestId;
       localStorage.setItem("guestId", guestId);
       // Save guest info for later quiz submission

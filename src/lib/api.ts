@@ -109,7 +109,7 @@ export const liveQuizAPI = {
   getAllCompletedQuizzes: () => api.get('/live-quiz-answers/all-completed'),
   getQuizStatistics: (params?: any) => api.get('/live-quizzes/statistics', { params }),
   getQuizByCode: (code: string) => api.get(`/live-quizzes/code/${code}`),
-  guestJoin: (data: { quizId: string, name: string, contact: string }) => api.post('/live-quizzes/guest/join', data),
+  guestJoin: (data: { quizId: string, name: string, email: string, phone: string }) => api.post('/live-quizzes/guest/join', data),
 };
 
 // Live Quiz Questions API

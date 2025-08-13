@@ -96,7 +96,17 @@ export default function Join() {
     }
     setIsLoading(true);
     try {
-      const res = await liveQuizAPI.guestJoin({ quizId: pendingQuizId!, name: guestName, contact: guestContact });
+      // Detect type
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const mobileRegex = /^\+?\d{7,15}$/;
+      let email = "";
+      let phone = "";
+      if (emailRegex.test(guestContact.trim())) {
+        email = guestContact.trim();
+      } else if (mobileRegex.test(guestContact.trim())) {
+        phone = guestContact.trim();
+      }
+      const res = await liveQuizAPI.guestJoin({ quizId: pendingQuizId!, name: guestName, email, phone });
       if (res.data.success && pendingQuizId) {
         // Save guest info in localStorage for quiz page
         window.localStorage.setItem('guestInfo', JSON.stringify({
