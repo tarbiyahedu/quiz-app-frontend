@@ -42,6 +42,19 @@ export default function JoinByCodePage() {
       setGuestError("Name and mobile/email are required.");
       return;
     }
+    // Detect type
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const mobileRegex = /^\+?\d{7,15}$/;
+    let email = "";
+    let phone = "";
+    if (emailRegex.test(guestInfo.contact.trim())) {
+      email = guestInfo.contact.trim();
+    } else if (mobileRegex.test(guestInfo.contact.trim())) {
+      phone = guestInfo.contact.trim();
+    } else {
+      setGuestError("Please enter a valid mobile number or email address.");
+      return;
+    }
     try {
       const res = await liveQuizAPI.guestJoin({
         quizId: quiz._id,
@@ -68,11 +81,17 @@ export default function JoinByCodePage() {
       } catch (e) {}
       router.replace(`/quiz/${quiz._id}/live`);
     } catch (err: any) {
-      setGuestError(err?.response?.data?.message || "Failed to join as guest.");
+      // Show custom error messages from backend
+      if (err?.response?.data?.message) {
+        setGuestError(err.response.data.message);
+      } else {
+        setGuestError("Failed to join as guest.");
+      }
     }
   };
 
   if (loading) {
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md w-full mx-4">
