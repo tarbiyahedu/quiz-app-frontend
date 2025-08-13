@@ -11,8 +11,8 @@ const typeIcon = (type: string) => type === 'registered' ? '🎓' : '🙋';
 const typeLabel = (type: string) => type === 'registered' ? 'Registered' : 'Guest';
 
 function exportToCSV(data: any[], quizTitle: string) {
-  const header = ['Rank', 'Name', 'Type', 'Score', 'Correct', 'Total', 'Time (s)', 'Email', 'Mobile'];
-  const rows = data.map(p => [p.rank, p.name, typeLabel(p.type), p.score, p.correctAnswers, p.totalQuestions, p.timeTaken, p.email || '', p.mobile || '']);
+  const header = ['Rank', 'Name', 'Type', 'Score', 'Correct', 'Total', 'Time (s)'];
+  const rows = data.map(p => [p.rank, p.name, typeLabel(p.type), p.score, p.correctAnswers, p.totalQuestions, p.timeTaken]);
   const csv = [header, ...rows].map(row => row.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -59,9 +59,14 @@ export default function QuizLeaderboardPage() {
   const totalPages = Math.ceil(filteredLeaderboard.length / PAGE_SIZE);
   const paginated = filteredLeaderboard.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  // Removed guest results logic
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-5xl">
+    {/* Removed Guest result view section */}
         <h1 className="text-3xl font-bold mb-2 text-[#0E2647] text-center">Leaderboard</h1>
         {quiz && (
           <div className="text-center mb-6">
@@ -84,10 +89,32 @@ export default function QuizLeaderboardPage() {
             />
             <Button
               variant="outline"
-              onClick={() => exportToCSV(filteredLeaderboard, quiz?.title || 'quiz')}
-              disabled={filteredLeaderboard.length === 0}
+              onClick={async () => {
+                setPdfLoading(true);
+                try {
+                  const res = await fetch(`https://quiz-app-backend-pi.vercel.app/api/live-leaderboard/${quizId}/export-pdf`, {
+                  // const res = await fetch(`http://localhost:5000/api/live-leaderboard/${quizId}/export-pdf`, {
+                    method: 'GET',
+                  });
+                  if (!res.ok) throw new Error('Failed to download PDF');
+                  const blob = await res.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${quiz?.title?.replace(/\s+/g, '_') || 'quiz'}_leaderboard.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert('Error downloading PDF.');
+                } finally {
+                  setPdfLoading(false);
+                }
+              }}
+              disabled={filteredLeaderboard.length === 0 || pdfLoading}
             >
-              Export CSV
+              {pdfLoading ? 'Downloading PDF...' : 'Export PDF'}
             </Button>
           </div>
         </div>
@@ -101,9 +128,7 @@ export default function QuizLeaderboardPage() {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Correct</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time (s)</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
+                {/* Removed Time (s), Email and Mobile columns */}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -124,9 +149,7 @@ export default function QuizLeaderboardPage() {
                   <td className="px-4 py-2">{p.score}</td>
                   <td className="px-4 py-2">{p.correctAnswers}</td>
                   <td className="px-4 py-2">{p.totalQuestions}</td>
-                  <td className="px-4 py-2">{p.timeTaken}</td>
-                  <td className="px-4 py-2">{p.email || '-'}</td>
-                  <td className="px-4 py-2">{p.mobile || '-'}</td>
+                  {/* Removed Time (s), Email and Mobile columns */}
                 </tr>
               ))}
             </tbody>

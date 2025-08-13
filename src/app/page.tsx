@@ -69,7 +69,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
                 {user ? (
                   <Link href="/dashboard">
-                    <Button size="lg" className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] hover:text-[#0E2647] transition-all duration-300 text-sm lg:text-base">
+                    <Button size="lg" className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] transition-all duration-300 text-sm lg:text-base">
                       Go to Dashboard
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -77,7 +77,7 @@ export default function Home() {
                 ) : (
                   <>
                     <Link href="/register">
-                      <Button size="lg" className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] hover:text-[#0E2647] transition-all duration-300 text-sm lg:text-base">
+                      <Button size="lg" className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] transition-all duration-300 text-sm lg:text-base">
                         Get Started
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -139,7 +139,7 @@ export default function Home() {
                         <div className="h-1.5 lg:h-2 w-12 lg:w-16 rounded-full bg-[#0E2647]/20" />
                         <div className="h-1.5 lg:h-2 w-12 lg:w-16 rounded-full bg-[#0E2647]/20" />
                       </div>
-                      <Button size="sm" className="bg-[#0E2647] text-white hover:bg-[#FAB364] hover:text-[#0E2647] text-xs lg:text-sm">
+                      <Button size="sm" className="bg-[#0E2647] text-white hover:bg-[#FAB364] text-xs lg:text-sm">
                         Submit
                       </Button>
                     </div>

@@ -75,10 +75,10 @@ const adminSidebarItems: SidebarItem[] = [
 
 const studentSidebarItems: SidebarItem[] = [
   {
-    id: 'profile',
-    label: 'Profile',
-    icon: <User className="h-4 w-4" />,
-    href: '/profile'
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: <Home className="h-4 w-4" />,
+    href: '/dashboard'
   },
   {
     id: 'live-quiz',
@@ -87,17 +87,18 @@ const studentSidebarItems: SidebarItem[] = [
     href: '/live-quiz'
   },
   {
-    id: 'complete-quiz',
-    label: 'Complete Quiz',
-    icon: <BookOpen className="h-4 w-4" />,
-    href: '/complete-quiz'
-  },
-  {
     id: 'result',
     label: 'Result',
     icon: <Trophy className="h-4 w-4" />,
     href: '/result'
   },
+  {
+    id: 'profile',
+    label: 'Profile',
+    icon: <User className="h-4 w-4" />,
+    href: '/profile'
+  },
+  
   {
     id: 'settings',
     label: 'Settings',

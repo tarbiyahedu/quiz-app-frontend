@@ -122,7 +122,9 @@ export default function AdminResultsOverviewPage() {
                     {quiz.title}
                   </CardTitle>
                   <Badge variant="outline" className="text-xs lg:text-sm">
-                    {quiz.department?.name || 'Unknown'}
+                    {Array.isArray(quiz.departments) && quiz.departments.length > 0
+                      ? quiz.departments.map((d: any) => d?.name || d).join(", ")
+                      : quiz.department?.name || quiz.department || 'Unknown'}
                   </Badge>
                 </div>
                 <p className="text-xs lg:text-sm text-gray-600 line-clamp-2">

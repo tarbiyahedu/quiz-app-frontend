@@ -1,12 +1,13 @@
 "use client";
 
-import StudentLayout from "@/app/layouts/student-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Trophy, Clock, Target, GraduationCap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { liveQuizAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BookOpen, Target, Clock, Trophy, GraduationCap } from "lucide-react";
+import StudentLayout from "../layouts/student-layout";
+// Removed unused imports
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -28,14 +29,20 @@ export default function StudentDashboardPage() {
         let filteredAvailable = available.data?.data || available.data || [];
         if (user.departments && user.departments.length > 0) {
           const userDeptIds = user.departments.map(dept => dept._id);
-          filteredAvailable = filteredAvailable.filter((quiz: any) => 
-            userDeptIds.includes(quiz.department?._id)
-          );
+          filteredAvailable = filteredAvailable.filter((quiz: any) => {
+            const deptIds = Array.isArray(quiz.departments)
+              ? quiz.departments.map((d: any) => (typeof d === 'string' ? d : d._id))
+              : [];
+            return deptIds.some((id: string) => userDeptIds.includes(String(id)));
+          });
         } else if (user.department) {
           // Fallback to old department field
-          filteredAvailable = filteredAvailable.filter((quiz: any) => 
-            quiz.department?._id === user.department?._id
-          );
+          filteredAvailable = filteredAvailable.filter((quiz: any) => {
+            const deptIds = Array.isArray(quiz.departments)
+              ? quiz.departments.map((d: any) => (typeof d === 'string' ? d : d._id))
+              : [];
+            return user.department && deptIds.includes(user.department._id);
+          });
         }
         
         setAvailableQuizzes(filteredAvailable);

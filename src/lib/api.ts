@@ -109,6 +109,7 @@ export const liveQuizAPI = {
   getAllCompletedQuizzes: () => api.get('/live-quiz-answers/all-completed'),
   getQuizStatistics: (params?: any) => api.get('/live-quizzes/statistics', { params }),
   getQuizByCode: (code: string) => api.get(`/live-quizzes/code/${code}`),
+  guestJoin: (data: { quizId: string, name: string, contact: string }) => api.post('/live-quizzes/guest/join', data),
 };
 
 // Live Quiz Questions API
@@ -142,6 +143,7 @@ export const liveLeaderboardAPI = {
 
 export const quizLeaderboardAPI = {
   getPublicLeaderboard: (quizId: string, filter: string = 'all') => api.get(`/live-leaderboard/quiz/${quizId}/public?filter=${filter}`),
+  getGuestResults: (quizId: string, guestId: string) => api.get(`/live-quizzes/guest/results?quizId=${quizId}&guestId=${guestId}`),
 };
 
 export const publicQuizAPI = {

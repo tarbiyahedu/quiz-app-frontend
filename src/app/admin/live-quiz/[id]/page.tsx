@@ -101,14 +101,21 @@ export default function AdminLiveQuizDetailPage() {
       return;
     }
 
+    // Convert local datetime to UTC ISO string
+    const liveStartAtUTC = new Date(scheduleData.liveStartAt).toISOString();
+    const liveEndAtUTC = new Date(scheduleData.liveEndAt).toISOString();
+
     setScheduleLoading(true);
     try {
-      await liveQuizAPI.scheduleQuiz(quizId, scheduleData);
+      await liveQuizAPI.scheduleQuiz(quizId, {
+        liveStartAt: liveStartAtUTC,
+        liveEndAt: liveEndAtUTC
+      });
       setQuiz((q: any) => ({ 
         ...q, 
         status: 'scheduled', 
-        liveStartAt: scheduleData.liveStartAt,
-        liveEndAt: scheduleData.liveEndAt 
+        liveStartAt: liveStartAtUTC,
+        liveEndAt: liveEndAtUTC 
       }));
       setShowSchedule(false);
       toast({ title: 'Quiz Scheduled', description: 'The quiz has been scheduled successfully.' });
@@ -180,13 +187,19 @@ export default function AdminLiveQuizDetailPage() {
     <div className="flex gap-8 max-w-6xl mx-auto mt-8">
       {/* Main Content */}
       <div className="flex-1">
-        <h1 className="text-2xl font-bold mb-4">{quiz.title}</h1>
+        <h1 className="text-2xl font-bold">{quiz.title}</h1>
         <div className="mb-2 text-gray-700">{quiz.description}</div>
-        <div className="mb-2 text-sm text-gray-600">Time Limit: {quiz.timeLimit} min</div>
-        <div className="mb-4">
+        <span className="mb-2 text-sm text-gray-600">
+          Department: {
+            Array.isArray(quiz.departments) && quiz.departments.length > 0
+              ? quiz.departments.map((d: any) => d?.name || d).join(", ")
+              : quiz.department?.name || quiz.department || "-"
+          }
+        </span>
+        <span className="mb-4 px-5">
           <Badge className={getStatusColor(quiz.status)}>{quiz.status}</Badge>
           {quiz.isLive && <Badge className="ml-2 bg-red-100 text-red-800">LIVE NOW</Badge>}
-        </div>
+        </span>
         
         {quiz.status === 'scheduled' && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg">

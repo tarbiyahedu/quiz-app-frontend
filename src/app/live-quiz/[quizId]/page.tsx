@@ -10,7 +10,7 @@ import { Clock, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { liveQuizAnswerAPI, liveQuizAPI, liveQuizQuestionAPI } from '@/lib/api';
 import io from "socket.io-client";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-main.vercel.app");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
 // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
 export default function LiveQuizAnswerPage() {
@@ -140,6 +140,10 @@ export default function LiveQuizAnswerPage() {
 
     // Listen for errors
     socket.on("error", (data) => {
+            // Guest state
+            const [guestName, setGuestName] = useState('');
+            const [guestId, setGuestId] = useState('');
+            const [showGuestDialog, setShowGuestDialog] = useState(false);
       console.log('Socket error:', data);
       setError(data.message);
     });

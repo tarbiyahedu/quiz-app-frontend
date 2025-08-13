@@ -82,7 +82,7 @@ export default function Navbar() {
                 </Button>
               </Link>
               <Link href="/register">
-                <Button className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] hover:text-[#0E2647] transition-all duration-300 text-sm lg:text-base">
+                <Button className="bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] transition-all duration-300 text-sm lg:text-base">
                   Get Started
                 </Button>
               </Link>
@@ -180,7 +180,7 @@ export default function Navbar() {
                     </Button>
                   </Link>
                   <Link href="/register" onClick={closeMobileMenu}>
-                    <Button className="w-full bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] hover:text-[#0E2647] transition-all duration-300">
+                    <Button className="w-full bg-[#0E2647] text-white hover:bg-[#FAB364] border border-[#0E2647] transition-all duration-300">
                       Get Started
                     </Button>
                   </Link>

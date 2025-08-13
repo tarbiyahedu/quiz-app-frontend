@@ -12,6 +12,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import { fontClass } from '@/lib/fontScript';
 
 export default function AdminQuizResultsDetailPage() {
   const params = useParams();
@@ -19,26 +20,28 @@ export default function AdminQuizResultsDetailPage() {
   const [quizData, setQuizData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState<{ [key: string]: boolean }>({});
+  // Only one composite key can be in edit mode at a time
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ [key: string]: any }>({});
   const [saving, setSaving] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
+    let isMounted = true;
     const fetchQuizData = async () => {
       try {
         setLoading(true);
         const response = await liveQuizAnswerAPI.getCompletedQuizDetailsForAdmin(quizId);
-        setQuizData(response.data.data);
+        if (isMounted) setQuizData(response.data.data);
       } catch (err: any) {
-        setError(err.response?.data?.message || "Failed to fetch quiz data");
+        if (isMounted) setError(err.response?.data?.message || "Failed to fetch quiz data");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
-
     if (quizId) {
       fetchQuizData();
     }
+    return () => { isMounted = false; };
   }, [quizId]);
 
   if (loading) {
@@ -67,7 +70,8 @@ export default function AdminQuizResultsDetailPage() {
     );
   }
 
-  if (!quizData) {
+
+  if (!quizData || typeof quizData !== 'object') {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -82,98 +86,115 @@ export default function AdminQuizResultsDetailPage() {
 
   const handleExportExcel = () => {
     if (!quizData) return;
+    // Use leaderboard data, sorted by rank
+    const leaderboard = (quizData.leaderboard || []).slice().sort((a: any, b: any) => a.rank - b.rank);
     const wsData = [
-      ['Name', 'Email', 'Score', 'Correct', 'Accuracy', 'Time (min)'],
-      ...quizData.participants.map((p: any) => [
+      ['Rank', 'Name', 'Email', 'Department', 'Score', 'Answered', 'Correct', 'Accuracy'],
+      ...leaderboard.map((p: any) => [
+        p.rank,
         p.name,
         p.email,
+        p.department,
         p.totalScore,
         `${p.correctAnswers}/${p.totalQuestions}`,
-        p.correctAnswers > 0 ? Math.round((p.correctAnswers / p.totalQuestions) * 100) : 0,
-        p.totalTime
+        p.correctAnswers,
+        p.correctAnswers > 0 ? Math.round((p.correctAnswers / p.totalQuestions) * 100) : 0
       ])
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Results');
-    XLSX.writeFile(wb, `${quizData.title || 'quiz-results'}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Leaderboard');
+    XLSX.writeFile(wb, `${quizData.title || 'quiz-leaderboard'}.xlsx`);
   };
 
   const handleExportPDF = () => {
     if (!quizData) return;
+    // Use leaderboard data, sorted by rank
+    const leaderboard = (quizData.leaderboard || []).slice().sort((a: any, b: any) => a.rank - b.rank);
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text(quizData.title || 'Quiz Results', 14, 18);
+    doc.text(quizData.title || 'Quiz Leaderboard', 14, 18);
     doc.setFontSize(12);
     doc.text(`Department: ${quizData.department}`, 14, 28);
     doc.text(`Total Questions: ${quizData.totalQuestions}`, 14, 36);
     doc.text(`Total Participants: ${quizData.totalParticipants}`, 14, 44);
     doc.text(`Average Score: ${quizData.averageScore}%`, 14, 52);
     doc.text(`Average Accuracy: ${quizData.averageAccuracy}%`, 14, 60);
-    // Table of participants
     autoTable(doc, {
       startY: 70,
       head: [[
-        'Name',
-        'Email',
-        'Score',
-        'Correct',
-        'Accuracy',
-        'Time (min)'
+        'Rank', 'Name', 'Email', 'Department', 'Score', 'Answered', 'Correct', 'Accuracy'
       ]],
-      body: quizData.participants.map((p: any) => [
+      body: leaderboard.map((p: any) => [
+        p.rank,
         p.name,
         p.email,
+        p.department,
         p.totalScore,
         `${p.correctAnswers}/${p.totalQuestions}`,
-        p.correctAnswers > 0 ? Math.round((p.correctAnswers / p.totalQuestions) * 100) : 0,
-        p.totalTime
+        p.correctAnswers,
+        p.correctAnswers > 0 ? Math.round((p.correctAnswers / p.totalQuestions) * 100) : 0
       ]),
-      styles: { fontSize: 9, cellWidth: 'wrap' },
+      styles: { fontSize: 8, cellWidth: 'auto', overflow: 'linebreak' },
       headStyles: { fillColor: [22, 82, 147] },
       columnStyles: {
-        1: { cellWidth: 40 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 18 },
-        4: { cellWidth: 18 },
-        5: { cellWidth: 18 }
+        0: { cellWidth: 10 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 38 },
+        3: { cellWidth: 24 },
+        4: { cellWidth: 14 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 14 },
+        7: { cellWidth: 16 }
       }
     });
-    doc.save(`${quizData.title || 'quiz-results'}.pdf`);
+    doc.save(`${quizData.title || 'quiz-leaderboard'}.pdf`);
   };
 
   // Helper to start editing an answer
-  const handleEdit = (answer: any) => {
-    setEditing((prev) => ({ ...prev, [answer.answerId]: true }));
+  const handleEdit = (answer: any, participant: any) => {
+    const key = participant.userId + '-' + answer.questionId;
+    console.log('Edit clicked for key:', key, 'answer:', answer);
+    setEditingKey(key);
     setEditValues((prev) => ({
       ...prev,
-      [answer.answerId]: {
+      [key]: {
         answerText: answer.userAnswer,
         isCorrect: answer.isCorrect,
         score: answer.score,
+        reviewNotes: answer.reviewNotes || '',
       },
     }));
   };
 
   // Helper to cancel editing
-  const handleCancel = (answerId: string) => {
-    setEditing((prev) => ({ ...prev, [answerId]: false }));
+  const handleCancel = (key: string) => {
+    console.log('Cancel clicked for key:', key);
+    setEditingKey(null);
     setEditValues((prev) => {
       const newVals = { ...prev };
-      delete newVals[answerId];
+      delete newVals[key];
       return newVals;
     });
   };
 
   // Helper to save changes
-  const handleSave = async (answer: any) => {
-    setSaving((prev) => ({ ...prev, [answer.answerId]: true }));
+  const handleSave = async (answer: any, participant: any) => {
+    const key = participant.userId + '-' + answer.questionId;
+    console.log('Save clicked for key:', key, 'with values:', editValues[key]);
+    setSaving((prev) => ({ ...prev, [key]: true }));
     try {
-      await liveQuizAnswerAPI.updateAnswer(answer.answerId, editValues[answer.answerId]);
-      setEditing((prev) => ({ ...prev, [answer.answerId]: false }));
+      // Find the correct answer object from participant.answers
+      const answerObj = participant.answers.find((a: any) => a.questionId === answer.questionId);
+      if (!answerObj) throw new Error('Answer object not found for save');
+      // Try to use answerObj._id, answerObj.id, or answerObj.answerId
+      const answerId = answerObj._id || answerObj.id || answerObj.answerId;
+      if (!answerId) throw new Error('Answer ID not found for save');
+      await liveQuizAnswerAPI.updateAnswer(answerId, editValues[key]);
+      setEditingKey(null);
       setEditValues((prev) => {
         const newVals = { ...prev };
-        delete newVals[answer.answerId];
+        delete newVals[key];
         return newVals;
       });
       // Refresh data
@@ -182,7 +203,7 @@ export default function AdminQuizResultsDetailPage() {
     } catch (err: any) {
       alert("Failed to save changes: " + (err.response?.data?.message || err.message));
     } finally {
-      setSaving((prev) => ({ ...prev, [answer.answerId]: false }));
+      setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
@@ -191,8 +212,8 @@ export default function AdminQuizResultsDetailPage() {
       <div className="p-6">
         {/* Quiz Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{quizData.title}</h1>
-          <p className="text-gray-600 mb-4">{quizData.description}</p>
+          <h1 className={`text-3xl font-bold text-gray-900 mb-2 ${fontClass(quizData.title)}`}>{quizData.title}</h1>
+          <p className={`text-gray-600 mb-4 ${fontClass(quizData.description)}`}>{quizData.description}</p>
           
           <div className="flex flex-wrap gap-4 mb-6">
             <Badge variant="outline" className="text-sm">
@@ -282,11 +303,10 @@ export default function AdminQuizResultsDetailPage() {
                   <TableHead>Score</TableHead>
                   <TableHead>Correct</TableHead>
                   <TableHead>Accuracy</TableHead>
-                  <TableHead>Time (min)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {quizData.participants.map((participant: any) => (
+                {(quizData.participants || []).map((participant: any) => (
                   <TableRow key={participant.userId}>
                     <TableCell>{participant.name}</TableCell>
                     <TableCell>{participant.email}</TableCell>
@@ -298,11 +318,6 @@ export default function AdminQuizResultsDetailPage() {
                 ))}
               </TableBody>
             </Table>
-            {/* Placeholder for export buttons */}
-            <div className="flex gap-4 mt-4">
-              <Button variant="outline" onClick={handleExportExcel}>Export as Excel</Button>
-              <Button variant="outline" onClick={handleExportPDF}>Export as PDF</Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -316,7 +331,13 @@ export default function AdminQuizResultsDetailPage() {
           <TabsContent value="leaderboard" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Quiz Leaderboard</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Quiz Leaderboard</CardTitle>
+                  <div className="flex gap-4">
+                    <Button variant="outline" onClick={handleExportExcel}>Download as Excel</Button>
+                    <Button variant="outline" onClick={handleExportPDF}>Download as PDF</Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -330,11 +351,10 @@ export default function AdminQuizResultsDetailPage() {
                       <TableHead>Answered</TableHead>
                       <TableHead>Correct</TableHead>
                       <TableHead>Accuracy</TableHead>
-                      <TableHead>Time (min)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {quizData.leaderboard.map((participant: any) => (
+                    {(quizData.leaderboard || []).map((participant: any) => (
                       <TableRow key={participant.userId}>
                         <TableCell className="font-medium">{participant.rank}</TableCell>
                         <TableCell>{participant.name}</TableCell>
@@ -355,7 +375,7 @@ export default function AdminQuizResultsDetailPage() {
 
           <TabsContent value="questions" className="mt-6">
             <div className="space-y-6">
-              {quizData.questions.map((question: any, qIndex: number) => (
+              {(quizData.questions || []).map((question: any, qIndex: number) => (
                 <Card key={question.questionId}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -406,8 +426,9 @@ export default function AdminQuizResultsDetailPage() {
                                 </TableRow>
                               );
                             }
-                            const isEditing = editing[answer.answerId];
-                            const editVal = editValues[answer.answerId] || {};
+                            const key = participant.userId + '-' + answer.questionId;
+                            const isEditing = editingKey === key;
+                            const editVal = editValues[key] || {};
                             return (
                               <TableRow key={participant.userId}>
                                 <TableCell className="font-medium">{participant.name}</TableCell>
@@ -416,7 +437,7 @@ export default function AdminQuizResultsDetailPage() {
                                     <input
                                       className="border rounded px-2 py-1 w-full"
                                       value={editVal.answerText}
-                                      onChange={e => setEditValues((prev) => ({ ...prev, [answer.answerId]: { ...editVal, answerText: e.target.value } }))}
+                                      onChange={e => setEditValues((prev) => ({ ...prev, [key]: { ...editVal, answerText: e.target.value } }))}
                                     />
                                   ) : (
                                     Array.isArray(answer.userAnswer)
@@ -430,7 +451,7 @@ export default function AdminQuizResultsDetailPage() {
                                       type="number"
                                       className="border rounded px-2 py-1 w-16"
                                       value={editVal.score}
-                                      onChange={e => setEditValues((prev) => ({ ...prev, [answer.answerId]: { ...editVal, score: Number(e.target.value) } }))}
+                                      onChange={e => setEditValues((prev) => ({ ...prev, [key]: { ...editVal, score: Number(e.target.value) } }))}
                                     />
                                   ) : (
                                     answer.score
@@ -442,7 +463,7 @@ export default function AdminQuizResultsDetailPage() {
                                     <select
                                       className="border rounded px-2 py-1"
                                       value={editVal.isCorrect ? 'true' : 'false'}
-                                      onChange={e => setEditValues((prev) => ({ ...prev, [answer.answerId]: { ...editVal, isCorrect: e.target.value === 'true' } }))}
+                                      onChange={e => setEditValues((prev) => ({ ...prev, [key]: { ...editVal, isCorrect: e.target.value === 'true' } }))}
                                     >
                                       <option value="true">Correct</option>
                                       <option value="false">Incorrect</option>
@@ -458,7 +479,7 @@ export default function AdminQuizResultsDetailPage() {
                                     <textarea
                                       className="border rounded px-2 py-1 w-full"
                                       value={editVal.reviewNotes || ''}
-                                      onChange={e => setEditValues((prev) => ({ ...prev, [answer.answerId]: { ...editVal, reviewNotes: e.target.value } }))}
+                                      onChange={e => setEditValues((prev) => ({ ...prev, [key]: { ...editVal, reviewNotes: e.target.value } }))}
                                       placeholder="Add review notes (optional)"
                                       rows={2}
                                     />
@@ -471,14 +492,15 @@ export default function AdminQuizResultsDetailPage() {
                                 <TableCell>
                                   {isEditing ? (
                                     <div className="flex gap-2">
-                                      <Button size="sm" variant="default" disabled={saving[answer.answerId]} onClick={() => handleSave(answer)}>
-                                        {saving[answer.answerId] ? 'Saving...' : 'Save'}
+                                      <Button size="sm" variant="default" disabled={saving[key]} onClick={() => handleSave(answer, participant)}>
+                                        {saving[key] ? 'Saving...' : 'Save'}
                                       </Button>
-                                      <Button size="sm" variant="outline" onClick={() => handleCancel(answer.answerId)}>Cancel</Button>
+                                      <Button size="sm" variant="outline" onClick={() => handleCancel(key)}>Cancel</Button>
                                     </div>
                                   ) : (
                                     <div>
-                                      <Button size="sm" variant="outline" onClick={() => handleEdit(answer)}>Edit</Button>
+                                      {/* Fix: Always pass the correct answer object to handleEdit */}
+                                      <Button size="sm" variant="outline" onClick={() => handleEdit(answer, participant)}>Edit</Button>
                                       {Array.isArray(answer.auditLogs) && answer.auditLogs.length > 0 && (
                                         <details className="mt-2">
                                           <summary className="cursor-pointer text-xs text-blue-600">View Audit Logs ({answer.auditLogs.length})</summary>

@@ -202,7 +202,7 @@ export default function FavoriteQuizPage() {
                     {quiz.questions} questions
                   </span>
                   <Button 
-                    className="bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647]"
+                    className="bg-[#0E2647] hover:bg-[#FAB364]"
                     size="sm"
                   >
                     {quiz.isLive ? 'Join Now' : 'Start Quiz'}

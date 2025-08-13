@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import io from "socket.io-client";
+import { useAuth } from '@/lib/auth-context';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ type Quiz = {
   totalQuestions?: number;
   currentParticipants?: number;
   department?: { name: string };
+  departments?: Array<{ name: string } | string>;
   createdBy?: { name: string };
   timeLimit?: number;
   // add other fields as needed
@@ -45,6 +48,7 @@ const defaultQuiz = {
 };
 
 export default function AdminLiveQuizPage() {
+  const { user } = useAuth ? useAuth() : { user: null };
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -58,6 +62,12 @@ export default function AdminLiveQuizPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmStart, setConfirmStart] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+
+  // Memoize department IDs for stable comparison (admin may have access to all, but keep for future-proofing)
+  const userDeptIds = useMemo(
+    () => (user?.departments?.map((d: any) => d._id) || []),
+    [user]
+  );
 
   // Fetch all quizzes
   const fetchQuizzes = async () => {
@@ -74,6 +84,42 @@ export default function AdminLiveQuizPage() {
   useEffect(() => {
     fetchQuizzes();
   }, []);
+
+  // Real-time socket logic for admin dashboard
+  useEffect(() => {
+    // Admins may want to see all quizzes, but if you want to filter by department, use userDeptIds
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+
+    // Optionally join department rooms if you want to filter by department
+    userDeptIds.forEach(deptId => {
+      socket.emit('join-department', { departmentId: deptId });
+    });
+
+    socket.on("quiz-live", (quiz: any) => {
+      // Optionally filter by department if needed
+      // if (userDeptIds.length && !userDeptIds.includes(quiz.department?._id || quiz.department)) return;
+      setQuizzes(prev => {
+        const quizId = quiz.quizId || quiz._id;
+        if (prev.some(q => q._id === quizId)) return prev;
+        return [...prev, { ...quiz, _id: quizId }];
+      });
+    });
+
+    socket.on("quiz-ended", (data: any) => {
+      setQuizzes(prev => prev.filter(q => q._id !== data.quizId));
+    });
+
+    socket.on("error", (err) => {
+      // Optionally show error toasts
+      // toast({ title: 'Socket error', description: err.message || String(err), variant: 'destructive' });
+      // console.error("[AdminLiveQuiz] Socket error:", err);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [userDeptIds.join(",")]);
 
   // Handlers
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,7 +201,7 @@ export default function AdminLiveQuizPage() {
     <div className="flex flex-col h-full bg-[#f9fafb] min-h-screen pb-12">
       <div className="flex items-center justify-between mb-10 mt-8 px-2 md:px-0">
         <h1 className="text-4xl font-extrabold text-[#0e2647] tracking-tight relative after:content-[''] after:block after:w-16 after:h-1 after:bg-[#FAB364] after:rounded-full after:mt-2">Manage Live Quizzes</h1>
-        <Button onClick={() => router.push("/admin/live-quiz/create")} className="bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647] px-6 py-3 text-lg font-semibold rounded-xl shadow-none">Create Quiz</Button>
+        <Button onClick={() => router.push("/admin/live-quiz/create")} className="bg-[#0E2647] hover:bg-[#FAB364] px-6 py-3 text-lg font-semibold rounded-xl shadow-none">Create Quiz</Button>
       </div>
       {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
       {loading && <Spinner className="mx-auto my-8" />}
@@ -183,9 +229,13 @@ export default function AdminLiveQuizPage() {
               {/* Info row */}
               <div className="flex flex-wrap gap-4 items-center text-sm text-gray-700 mb-4">
                 <span className="flex items-center gap-1"><span className="text-base">👥</span> {quiz.currentParticipants ?? 0} participants</span>
-                <span className="flex items-center gap-1"><span className="text-base">⏰</span> {quiz.timeLimit ?? 0} min</span>
-                <span className="flex items-center gap-1"><span className="text-base">🏫</span> {quiz.department?.name || '-'}</span>
                 <span className="flex items-center gap-1"><span className="text-base">❓</span> {quiz.totalQuestions ?? 0} questions</span>
+                <span className="flex items-center gap-1"><span className="text-base">🏫</span> {
+                  Array.isArray(quiz.departments) && quiz.departments.length > 0
+                    ? quiz.departments.map((d: any) => typeof d === "string" ? d : d?.name).join(", ")
+                    : (typeof quiz.department === "string" ? quiz.department : quiz.department?.name) || "-"
+                }</span>
+               
               </div>
               {/* Description */}
               <div className="text-gray-600 text-base mb-6 line-clamp-2 flex-1">{quiz.description}</div>
@@ -194,12 +244,12 @@ export default function AdminLiveQuizPage() {
                 <Button
                   onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)}
                   aria-label="View Quiz"
-                  className="rounded-lg font-semibold text-base px-6 py-2 bg-white border border-[#0E75C4] text-[#0E75C4] hover:bg-[#e6f1fa] transition min-w-[140px]"
+                  className="rounded-lg font-semibold text-base px-6 py-2 bg-[#0e2647] border border-[#0E75C4] text-[#0E75C4] hover:bg-[#fab364] transition min-w-[140px]"
                 >
                   View Details
                 </Button>
                 <Button size="icon" variant="outline" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/edit`)} aria-label="Edit Quiz" className="rounded-lg border-gray-300 text-gray-700 hover:bg-gray-100"><FaEdit /></Button>
-                <Button size="icon" variant="outline" onClick={() => { setSelectedQuiz(quiz); setConfirmDelete(true); }} aria-label="Delete Quiz" className="rounded-lg bg-white text-red-600 border border-gray-300 hover:bg-red-50"><FaTrash /></Button>
+                <Button size="icon" variant="outline" onClick={() => { setSelectedQuiz(quiz); setConfirmDelete(true); }} aria-label="Delete Quiz" className="rounded-lg bg-white  border border-gray-300 hover:bg-red-50"><FaTrash /></Button>
                 {quiz.status === 'live' && <Button size="icon" onClick={() => router.push(`/admin/live-quiz/${quiz._id}/start`)} aria-label="End Quiz" className="rounded-lg border-gray-300 text-red-600 hover:bg-red-50"><FaStop /></Button>}
                 {quiz.status === 'scheduled' && <Button size="icon" onClick={() => router.push(`/admin/live-quiz/${quiz._id}`)} aria-label="View Schedule" className="rounded-lg border-gray-300 text-blue-700 hover:bg-blue-50"><FaEye /></Button>}
               </div>

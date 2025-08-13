@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import api from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+// Removed unused imports
 import { useRouter } from "next/navigation";
 import { useAuth } from '@/lib/auth-context';
 import io from "socket.io-client";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 // Quiz type for display
 interface Quiz {
@@ -14,7 +15,7 @@ interface Quiz {
   description: string;
   timeLimit: number;
   schedule?: string;
-  department: any; // Add this line to fix the type error
+  departments?: any[];
 }
 
 export default function LiveQuizStudentDashboard() {
@@ -23,16 +24,20 @@ export default function LiveQuizStudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
-
-  // Helper to filter quizzes by department
+  // Memoize department IDs for stable comparison
+  const userDeptIds = useMemo(() => (user?.departments?.map((d: any) => String(d._id)) || []), [user]);
+  // Helper to filter quizzes by departments array
   const filterByDepartment = (quizList: Quiz[]) => {
     if (!user) return [];
-    const userDeptIds = user.departments?.map((d: any) => d._id) || [];
-    return quizList.filter(q => userDeptIds.includes(q.department?._id || q.department));
+    return quizList.filter(q => {
+      const deptIds = Array.isArray(q.departments)
+        ? q.departments.map((d: any) => (typeof d === 'string' ? d : d._id))
+        : [];
+      return deptIds.some((id: string) => userDeptIds.includes(String(id)));
+    });
   };
 
   useEffect(() => {
-    console.log("[LiveQuiz] useEffect: user:", user);
     const fetchQuizzes = async () => {
       setLoading(true);
       try {
@@ -40,69 +45,49 @@ export default function LiveQuizStudentDashboard() {
         const res = await api.get("/live-quizzes?status=live");
         const filtered = filterByDepartment(res.data.data || []);
         setQuizzes(filtered);
-        console.log("[LiveQuiz] Initial quizzes fetched and filtered:", filtered);
       } catch (e: any) {
         setError(e.message || "Failed to load quizzes");
-        console.error("[LiveQuiz] Error fetching quizzes:", e);
       }
       setLoading(false);
     };
-    if (user) fetchQuizzes();
-  }, [user]);
+    if (userDeptIds.length > 0) fetchQuizzes();
+  }, [userDeptIds.join(",")]);
 
   useEffect(() => {
-    console.log("[LiveQuiz] Socket useEffect running. User:", user);
-    if (!user) {
-      console.log("[LiveQuiz] No user, skipping socket setup");
-      return;
-    }
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+    if (!userDeptIds.length) return;
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
     // Join all department rooms
-    if (user.departments && Array.isArray(user.departments)) {
-      user.departments.forEach(dept => {
-        socket.emit('join-department', { departmentId: dept._id });
-        console.log("[LiveQuiz] Joined department room:", dept._id);
-      });
-    }
-
-    socket.on("connect", () => {
-      console.log("[LiveQuiz] Socket connected:", socket.id);
-    });
-    socket.on("disconnect", () => {
-      console.log("[LiveQuiz] Socket disconnected");
+    userDeptIds.forEach(deptId => {
+      socket.emit('join-department', { departmentId: deptId });
     });
 
-    // When a quiz goes live
     socket.on("quiz-live", (quiz: any) => {
-      console.log("[LiveQuiz] Received quiz-live event:", quiz);
+      // Only add if for user's department (compare as string)
+      const deptIds = Array.isArray(quiz.departments)
+        ? quiz.departments.map((d: any) => (typeof d === 'string' ? d : d._id))
+        : [];
+      if (!deptIds.some((id: string) => userDeptIds.includes(String(id)))) return;
       setQuizzes(prev => {
-        if (prev.some(q => q._id === quiz.quizId || q._id === quiz._id)) return prev;
-        const updated = [...prev, { ...quiz, _id: quiz.quizId || quiz._id }];
-        console.log("[LiveQuiz] Quiz added. Updated quiz list:", updated);
-        return updated;
+        const quizId = quiz.quizId || quiz._id;
+        if (prev.some(q => String(q._id) === String(quizId))) return prev;
+        return [...prev, { ...quiz, _id: quizId }];
       });
     });
 
-    // When a quiz ends
     socket.on("quiz-ended", (data: any) => {
-      console.log("[LiveQuiz] Received quiz-ended event:", data);
-      setQuizzes(prev => {
-        const updated = prev.filter(q => q._id !== data.quizId);
-        console.log("[LiveQuiz] Quiz removed. Updated quiz list:", updated);
-        return updated;
-      });
+      setQuizzes(prev => prev.filter(q => String(q._id) !== String(data.quizId)));
     });
 
     socket.on("error", (err) => {
-      console.error("[LiveQuiz] Socket error:", err);
+      // Optionally handle socket errors
     });
 
     return () => {
-      console.log("[LiveQuiz] Cleaning up socket connection");
       socket.disconnect();
     };
-  }, [user]);
+  }, [userDeptIds.join(",")]);
 
 
   if (loading) return <div>Loading quizzes...</div>;

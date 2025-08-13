@@ -11,6 +11,7 @@ import { FaEdit, FaTrash, FaImage, FaVideo, FaPlus, FaMinus } from 'react-icons/
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { MultiSelectCombobox } from '@/components/ui/MultiSelectCombobox';
 
 const QUESTION_TYPES = [
   { value: "short", label: "Short Answer", backendType: "Short" },
@@ -44,7 +45,7 @@ type Quiz = {
   _id?: string;
   title: string;
   description: string;
-  department: string;
+  departments: string[];
   isPublic?: boolean;
   questions: Question[];
 };
@@ -415,7 +416,7 @@ const MediaEditor = ({ question, onChange }: { question: Question; onChange: (q:
         }
       }
     } catch (error) {
-      console.error('Upload failed:', error);
+      // Upload failed: error
     }
   };
 
@@ -505,13 +506,15 @@ const MediaEditor = ({ question, onChange }: { question: Question; onChange: (q:
 
 // Main QuizForm Component
 export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
-  const [quiz, setQuiz] = useState<Quiz>(initialQuiz || {
-    title: "",
-    description: "",
-    department: "",
-    isPublic: false,
-    questions: [],
-  });
+  const [quiz, setQuiz] = useState<Quiz>(initialQuiz
+    ? { ...initialQuiz, questions: Array.isArray(initialQuiz.questions) ? initialQuiz.questions : [] }
+    : {
+        title: "",
+        description: "",
+        departments: [],
+        isPublic: false,
+        questions: [],
+      });
   const [originalQuestionIds, setOriginalQuestionIds] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [questionDraft, setQuestionDraft] = useState<Question>({
@@ -538,7 +541,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         : {
             title: "",
             description: "",
-            department: "",
+            departments: [],
             isPublic: false,
             questions: [],
           }
@@ -549,7 +552,16 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
         : []
     );
   }, [initialQuiz]);
-
+              {/* Department Multi-Select */}
+              <div>
+                <Label>Departments</Label>
+                <MultiSelectCombobox
+                  options={departments.map((dept: any) => ({ value: dept._id, label: dept.name }))}
+                  value={Array.isArray(quiz.departments) ? quiz.departments.map((d: any) => typeof d === 'string' ? d : d._id) : []}
+                  onChange={(vals: string[]) => setQuiz(q => ({ ...q, departments: vals }))}
+                  label="Departments"
+                />
+              </div>
   useEffect(() => {
     const fetchDepartments = async () => {
       setLoadingDepartments(true);
@@ -680,7 +692,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
       setSaving(false);
       return;
     }
-    if (!quiz.department) {
+    if (!quiz.departments || quiz.departments.length === 0) {
       toast({ title: 'Validation Error', description: 'Department is required.', variant: 'destructive' });
       setSaving(false);
       return;
@@ -694,24 +706,36 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
     try {
       let quizId = quiz._id;
       if (mode === "create") {
-        const quizRes = await api.post("/live-quizzes", {
+        const quizPayload = {
           title: quiz.title,
           description: quiz.description,
           totalQuestions: quiz.questions.length,
-          department: quiz.department,
-          isPublic: quiz.isPublic,
+          departments: quiz.departments,
+          isPublic: !!quiz.isPublic,
           status: 'draft', // Create quiz in draft status
-        });
+        };
+        // Quiz creation payload: quizPayload
+        const quizRes = await api.post("/live-quizzes", quizPayload);
         const quizData = quizRes.data;
         if (!quizData.data?._id) throw new Error(quizData.message || "Failed to create quiz");
         quizId = quizData.data._id;
+        // Refetch quiz after creation to update local state (including isPublic)
+        try {
+          const res = await api.get(`/live-quizzes/${quizId}`);
+          if (res.data && res.data.data) {
+            setQuiz({
+              ...res.data.data,
+              questions: Array.isArray(res.data.data.questions) ? res.data.data.questions : []
+            });
+          }
+        } catch {}
       } else if (mode === "edit" && quiz._id) {
         await api.put(`/live-quizzes/${quiz._id}`, {
           title: quiz.title,
           description: quiz.description,
           totalQuestions: quiz.questions.length,
-          department: quiz.department,
-          isPublic: quiz.isPublic,
+          departments: quiz.departments,
+          isPublic: !!quiz.isPublic,
         });
         quizId = quiz._id;
       }
@@ -726,9 +750,9 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
       }
 
       // --- SAVE/UPDATE questions ---
-      for (const [order, q] of quiz.questions.entries()) {
+  for (const [order, q] of (Array.isArray(quiz.questions) ? quiz.questions : []).entries()) {
+
         const questionType = QUESTION_TYPES.find(t => t.value === q.type)?.backendType || "Short";
-        
         const payload: any = {
           type: questionType,
           questionText: q.text,
@@ -738,10 +762,20 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
 
         // Add type-specific data
         switch (q.type) {
-          case "mcq":
+          case "mcq": {
             payload.options = q.options.filter(opt => opt.trim());
-            payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+            // Convert letter-based correct answers to actual option text
+            const correctOptionTexts = Array.isArray(q.correctAnswers)
+              ? q.correctAnswers
+                  .map(letter => {
+                    const index = letter.charCodeAt(0) - 65; // A=0, B=1, etc.
+                    return q.options[index];
+                  })
+                  .filter(opt => opt && opt.trim())
+              : [];
+            payload.correctAnswers = correctOptionTexts;
             break;
+          }
           case "truefalse":
             payload.correctAnswer = q.answer;
             break;
@@ -761,7 +795,15 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
             // Add the underlying question data
             if (q.mediaQuestionType === "mcq") {
               payload.options = q.options.filter(opt => opt.trim());
-              payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+              const correctOptionTexts = Array.isArray(q.correctAnswers)
+                ? q.correctAnswers
+                    .map(letter => {
+                      const index = letter.charCodeAt(0) - 65;
+                      return q.options[index];
+                    })
+                    .filter(opt => opt && opt.trim())
+                : [];
+              payload.correctAnswers = correctOptionTexts;
             } else if (q.mediaQuestionType === "tf") {
               payload.correctAnswer = q.answer;
             } else {
@@ -823,8 +865,8 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           title: quiz.title,
           description: quiz.description,
           totalQuestions: quiz.questions.length,
-          department: quiz.department,
-          isPublic: quiz.isPublic,
+          departments: quiz.departments,
+          isPublic: !!quiz.isPublic,
           status: 'draft', // Create quiz in draft status
         });
         const quizData = quizRes.data;
@@ -846,7 +888,16 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           switch (q.type) {
             case "mcq":
               payload.options = q.options.filter(opt => opt.trim());
-              payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+              // Convert letter-based correct answers to actual option text
+              const correctOptionTexts = Array.isArray(q.correctAnswers) 
+                ? q.correctAnswers
+                    .map(letter => {
+                      const index = letter.charCodeAt(0) - 65; // Convert A=0, B=1, etc.
+                      return q.options[index];
+                    })
+                    .filter(opt => opt && opt.trim()) // Filter out any invalid options
+                : [];
+              payload.correctAnswers = correctOptionTexts;
               break;
             case "truefalse":
               payload.correctAnswer = q.answer;
@@ -866,7 +917,16 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
               if (q.videoUrl) payload.videoUrl = q.videoUrl;
               if (q.mediaQuestionType === "mcq") {
                 payload.options = q.options.filter(opt => opt.trim());
-                payload.correctAnswers = Array.isArray(q.correctAnswers) ? q.correctAnswers : [];
+                // Convert letter-based correct answers to actual option text for media MCQ
+                const correctOptionTexts = Array.isArray(q.correctAnswers) 
+                  ? q.correctAnswers
+                      .map(letter => {
+                        const index = letter.charCodeAt(0) - 65; // Convert A=0, B=1, etc.
+                        return q.options[index];
+                      })
+                      .filter(opt => opt && opt.trim()) // Filter out any invalid options
+                  : [];
+                payload.correctAnswers = correctOptionTexts;
               } else if (q.mediaQuestionType === "tf") {
                 payload.correctAnswer = q.answer;
               } else {
@@ -928,19 +988,15 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
             <Label>Description</Label>
             <Input value={quiz.description} onChange={e => setQuiz(q => ({ ...q, description: e.target.value }))} />
           </div>
+          {/* Department Multi-Select */}
           <div>
-            <Label>Department</Label>
-            <select
-              value={quiz.department}
-              onChange={e => setQuiz(q => ({ ...q, department: e.target.value }))}
-              className="w-full border rounded px-3 py-2 text-base h-11"
-              required
-            >
-              <option value="" disabled>Select Department</option>
-              {departments.map(dep => (
-                <option key={dep._id} value={dep._id}>{dep.name}</option>
-              ))}
-            </select>
+            <Label>Departments</Label>
+            <MultiSelectCombobox
+              options={departments.map((dept: any) => ({ value: dept._id, label: dept.name }))}
+              value={Array.isArray(quiz.departments) ? quiz.departments.map((d: any) => typeof d === 'string' ? d : d._id) : []}
+              onChange={(vals: string[]) => setQuiz(q => ({ ...q, departments: vals }))}
+              label="Departments"
+            />
           </div>
           <div className="flex items-center mt-2">
             <input
@@ -1048,7 +1104,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           {renderQuestionEditor()}
           
           <Button 
-            className="mt-4 bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647]" 
+            className="mt-4 bg-[#0E2647] hover:bg-[#FAB364]" 
             onClick={handleAddOrUpdateQuestion}
           >
             {editingIndex !== null ? "Update Question" : "Add Question"}
@@ -1058,7 +1114,7 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
 
       <div className="flex gap-4 justify-end">
         <Button 
-          className="bg-[#0E2647] hover:bg-[#FAB364] hover:text-[#0E2647]" 
+          className="bg-[#0E2647] hover:bg-[#FAB364]" 
           onClick={handleSaveQuiz} 
           disabled={saving}
         >
@@ -1069,4 +1125,4 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
       {error && <div className="text-red-500 mt-2">{error}</div>}
     </div>
   );
-} 
+}
