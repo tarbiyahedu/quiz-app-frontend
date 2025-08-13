@@ -136,7 +136,7 @@ export default function JoinByCodePage() {
           />
           <input
             className="w-full border rounded-lg p-3 mb-4"
-            placeholder="Mobile or Email"
+            placeholder="Email"
             value={guestInfo.contact}
             onChange={e => setGuestInfo({ ...guestInfo, contact: e.target.value })}
           />
