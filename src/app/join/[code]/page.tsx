@@ -50,6 +50,11 @@ export default function JoinByCodePage() {
       });
       const guestId = res.data.guestId;
       localStorage.setItem("guestId", guestId);
+      // Save guest info for later quiz submission
+      localStorage.setItem("guestInfo", JSON.stringify({
+        guestName: guestInfo.name,
+        guestContact: guestInfo.contact
+      }));
       // Emit socket event for guest join with role info
       try {
         const io = (await import('socket.io-client')).default;

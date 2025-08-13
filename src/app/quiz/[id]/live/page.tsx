@@ -510,13 +510,28 @@ function renderInput({
         setShowGuestModal(false);
         router.push('/result');
       } else {
+        // Always use guest info from localStorage
+        let guestName = '';
+        let guestContact = '';
+        if (typeof window !== 'undefined') {
+          const info = window.localStorage.getItem('guestInfo');
+          if (info) {
+            try {
+              const parsed = JSON.parse(info);
+              guestName = parsed.guestName || '';
+              guestContact = parsed.guestContact || '';
+            } catch {}
+          }
+        }
+        let guestEmail = guestContact.includes('@') ? guestContact : '';
+        let guestMobile = guestContact && !guestContact.includes('@') ? guestContact : '';
         await liveQuizAnswerAPI.submitMultipleAnswersGuest({
           quizId: quiz._id,
           answers: answersArray,
           isGuest: true,
-          guestName: gName,
-          guestEmail: gEmail,
-          guestMobile: gMobile
+          guestName,
+          guestEmail,
+          guestMobile
         });
         setShowGuestModal(false);
         router.push('/leaderboard?success=1');
