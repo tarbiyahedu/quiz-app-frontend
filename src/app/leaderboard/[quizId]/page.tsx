@@ -92,26 +92,30 @@ export default function QuizLeaderboardPage() {
               onClick={async () => {
                 setPdfLoading(true);
                 try {
-                  const res = await fetch(`https://quiz-app-backend-pi.vercel.app/api/live-leaderboard/${quizId}/export-pdf`, {
-                  // const res = await fetch(`http://localhost:5000/api/live-leaderboard/${quizId}/export-pdf`, {
-                    method: 'GET',
-                  });
-                  if (!res.ok) throw new Error('Failed to download PDF');
-                  const blob = await res.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${quiz?.title?.replace(/\s+/g, '_') || 'quiz'}_leaderboard.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  window.URL.revokeObjectURL(url);
-                } catch (err) {
-                  alert('Error downloading PDF.');
-                } finally {
-                  setPdfLoading(false);
-                }
-              }}
+                      // API URL environment variable 
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+                      const res = await fetch(`${API_URL}/live-leaderboard/${quizId}/export-pdf`, {
+                        method: 'GET',
+                      });
+
+                      if (!res.ok) throw new Error('Failed to download PDF');
+
+                      const blob = await res.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${quiz?.title?.replace(/\s+/g, '_') || 'quiz'}_leaderboard.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      alert('Error downloading PDF.');
+                    } finally {
+                      setPdfLoading(false);
+                    }
+                }}
               disabled={filteredLeaderboard.length === 0 || pdfLoading}
             >
               {pdfLoading ? 'Downloading PDF...' : 'Export PDF'}

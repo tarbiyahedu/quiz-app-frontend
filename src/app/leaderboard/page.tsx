@@ -85,35 +85,43 @@ export default function LeaderboardPage() {
     }
   };
 
-  const fetchCompletedPublicQuizzes = async () => {
-    setLoadingCompleted(true);
-    try {
-      setCompletedError(null);
-      console.log('[Leaderboard] Fetching completed public quizzes...');
-  const response = await fetch('https://quiz-app-backend-pi.vercel.app/api/live-leaderboard/public-completed');
-  // const response = await fetch('http://localhost:5000/api/live-leaderboard/public-completed');
-      console.log('[Leaderboard] Response status:', response.status);
-      if (!response.ok) {
-        setCompletedError(`API error: ${response.status} ${response.statusText}`);
-        setCompletedPublicQuizzes([]);
-        return;
-      }
-      const data = await response.json();
-      console.log('[Leaderboard] Response data:', data);
-      if (!data.success) {
-        setCompletedError(`Backend error: ${data.message || 'Unknown error'}`);
-        setCompletedPublicQuizzes([]);
-        return;
-      }
-      setCompletedPublicQuizzes(data.data || []);
-    } catch (error) {
-      console.error('[Leaderboard] Error fetching completed public quizzes:', error);
-      setCompletedError(`Fetch error: ${error}`);
+const fetchCompletedPublicQuizzes = async () => {
+  setLoadingCompleted(true);
+  try {
+    setCompletedError(null);
+    console.log('[Leaderboard] Fetching completed public quizzes...');
+
+    // Environment variable 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+    const response = await fetch(`${API_URL}/live-leaderboard/public-completed`);
+    console.log('[Leaderboard] Response status:', response.status);
+
+    if (!response.ok) {
+      setCompletedError(`API error: ${response.status} ${response.statusText}`);
       setCompletedPublicQuizzes([]);
-    } finally {
-      setLoadingCompleted(false);
+      return;
     }
-  };
+
+    const data = await response.json();
+    console.log('[Leaderboard] Response data:', data);
+
+    if (!data.success) {
+      setCompletedError(`Backend error: ${data.message || 'Unknown error'}`);
+      setCompletedPublicQuizzes([]);
+      return;
+    }
+
+    setCompletedPublicQuizzes(data.data || []);
+  } catch (error) {
+    console.error('[Leaderboard] Error fetching completed public quizzes:', error);
+    setCompletedError(`Fetch error: ${error}`);
+    setCompletedPublicQuizzes([]);
+  } finally {
+    setLoadingCompleted(false);
+  }
+};
+
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="h-6 w-6 text-yellow-500" />;

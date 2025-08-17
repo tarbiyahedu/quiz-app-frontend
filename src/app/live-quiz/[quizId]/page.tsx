@@ -10,8 +10,8 @@ import { Clock, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { liveQuizAnswerAPI, liveQuizAPI, liveQuizQuestionAPI } from '@/lib/api';
 import io from "socket.io-client";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
-// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
 export default function LiveQuizAnswerPage() {
   const { user, loading } = useAuth();

@@ -55,8 +55,8 @@ export default function LiveQuizStudentDashboard() {
 
   useEffect(() => {
     if (!userDeptIds.length) return;
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
-    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
     // Join all department rooms
     userDeptIds.forEach(deptId => {

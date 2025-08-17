@@ -21,7 +21,7 @@ interface UseSocketOptions {
 export const useSocket = (options: UseSocketOptions = {}) => {
   const { 
     enabled = true, 
-    url = process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app",
+    url = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000",
     onConnect,
     onDisconnect,
     onError

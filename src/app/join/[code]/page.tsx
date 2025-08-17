@@ -73,8 +73,8 @@ export default function JoinByCodePage() {
       // Emit socket event for guest join with role info
       try {
         const io = (await import('socket.io-client')).default;
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
-        // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
+        // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
+        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
         socket.emit('joinPublicQuiz', {
           quizId: quiz._id,
           guestName: guestInfo.name,

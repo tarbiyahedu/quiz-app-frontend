@@ -198,7 +198,7 @@ export default function LoginPage() {
               window.location.href = process.env.NEXT_PUBLIC_API_URL + '/auth/google';
             }}
             disabled={isLoading}
-            className="w-full border-[#0E2647] text-[#0E2647] hover:bg-[#0E2647] hover:text-white transition-all duration-300"
+            className="w-full border-[#0E2647] text-[#0E2647] hover:bg-[#0E2647] transition-all duration-300"
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

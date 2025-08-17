@@ -3,8 +3,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import io from "socket.io-client";
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
-// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
 export default function LiveParticipantsPanel({ quizId, showControls = false }: { quizId: string, showControls?: boolean }) {
   const { user, loading } = useAuth();

@@ -200,8 +200,8 @@ export default function LiveQuizPage() {
   useEffect(() => {
     if (!id || !user) return;
     // Use the same socket URL as in the rest of the app
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
-    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
     // Join quiz room
     socket.emit("join-quiz", { quizId: id, userId: user._id });

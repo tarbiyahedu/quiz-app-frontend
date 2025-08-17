@@ -13,8 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, Clock, ArrowLeft, ArrowRight } from "lucide-react";
 
-// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+// const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
 
 export default function PublicLiveQuizPage() {
   const params = useParams();

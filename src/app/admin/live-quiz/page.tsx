@@ -88,8 +88,8 @@ export default function AdminLiveQuizPage() {
   // Real-time socket logic for admin dashboard
   useEffect(() => {
     // Admins may want to see all quizzes, but if you want to filter by department, use userDeptIds
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
-    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
+    // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "https://quiz-app-backend-pi.vercel.app");
+    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000");
 
     // Optionally join department rooms if you want to filter by department
     userDeptIds.forEach(deptId => {

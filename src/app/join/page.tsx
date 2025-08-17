@@ -67,8 +67,8 @@ export default function Join() {
       if (user) {
         router.push(`/quiz/${quizData._id}/live`);
   const [quizId, setQuizId] = useState(''); // You may get this from URL or props
-  // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
-  const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
+  const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
+  // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
         return;
       }
 
@@ -117,8 +117,8 @@ export default function Join() {
         // Emit socket event for guest join with role info
         try {
           const io = (await import('socket.io-client')).default;
-          const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
-          // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
+          // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
+          const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
           socket.emit('joinPublicQuiz', {
             quizId: pendingQuizId,
             guestName,
