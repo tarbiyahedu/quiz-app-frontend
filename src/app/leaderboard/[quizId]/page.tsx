@@ -118,7 +118,7 @@ export default function QuizLeaderboardPage() {
                 }}
               disabled={filteredLeaderboard.length === 0 || pdfLoading}
             >
-              {pdfLoading ? 'Downloading PDF...' : 'Export PDF'}
+              {pdfLoading ? 'Downloading PDF...' : 'Download PDF Result'}
             </Button>
           </div>
         </div>

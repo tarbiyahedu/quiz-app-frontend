@@ -70,7 +70,7 @@ export const authAPI = {
 
 // User API
 export const userAPI = {
-  getAllUsers: () => api.get('/users/all'),
+  getAllUsers: (params?: any) => api.get('/users/all', params),
   getUserById: (id: string) => api.get(`/users/details/${id}`),
   updateUser: (id: string, data: any) => api.patch(`/users/update/${id}`, data),
   updateOwnProfile: (data: any) => api.patch('/users/me', data),

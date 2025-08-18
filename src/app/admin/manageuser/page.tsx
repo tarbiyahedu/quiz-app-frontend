@@ -38,6 +38,8 @@ const ManageUsersPage = () => {
   // All hooks must be called unconditionally at the top
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const { toast } = useToast();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({ name: '', email: '', number: '', password: '', departments: [] as string[], role: '' });
@@ -68,9 +70,20 @@ const ManageUsersPage = () => {
 
   // Fetch users and departments
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const response = await userAPI.getAllUsers();
+      const params: any = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (roleFilter) params.role = roleFilter;
+      if (statusFilter) params.approved = statusFilter === 'approved' ? true : statusFilter === 'not_approved' ? false : undefined;
+      if (departmentFilter) params.department = departmentFilter;
+      if (searchTerm) params.search = searchTerm;
+      const response = await userAPI.getAllUsers({ params });
       setUsers(response.data.data);
+      setTotalUsers(response.data.pagination.total);
+      setTotalPages(response.data.pagination.pages);
     } catch (error) {
       console.error("Failed to fetch users", error);
       toast({
@@ -86,7 +99,7 @@ const ManageUsersPage = () => {
   useEffect(() => {
     fetchUsers();
     departmentAPI.getAllDepartments().then(res => setDepartments(res.data.data)).catch(() => setDepartments([]));
-  }, [toast]);
+  }, [currentPage, pageSize, roleFilter, statusFilter, departmentFilter, searchTerm, toast]);
 
   // Only do conditional returns after all hooks
   if (authLoading) {
@@ -269,9 +282,7 @@ const ManageUsersPage = () => {
     });
   }
 
-  const totalUsers = filteredUsers.length;
-  const totalPages = Math.ceil(totalUsers / pageSize);
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedUsers = users;
 
   const handleExportExcel = () => {
     const headers = ['Name', 'Number', 'Email', 'Role', 'Status', 'Departments', 'Join Date'];
