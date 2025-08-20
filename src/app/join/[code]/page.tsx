@@ -63,31 +63,35 @@ export default function JoinByCodePage() {
         phone
       };
       const res = await liveQuizAPI.guestJoin(payload);
-      const guestId = res.data.guestId;
-      localStorage.setItem("guestId", guestId);
-      // Save guest info for later quiz submission
-      localStorage.setItem("guestInfo", JSON.stringify({
-        guestName: guestInfo.name,
-        guestContact: guestInfo.contact
-      }));
-      // Emit socket event for guest join with role info
-      try {
-        const io = (await import('socket.io-client')).default;
-        // const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'https://quiz-app-backend-pi.vercel.app');
-        const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
-        socket.emit('joinPublicQuiz', {
-          quizId: quiz._id,
+      if (res.data.success && res.data.guestId) {
+        const guestId = res.data.guestId;
+        localStorage.setItem("guestId", guestId);
+        localStorage.setItem("guestInfo", JSON.stringify({
           guestName: guestInfo.name,
-          role: 'Guest'
-        });
-      } catch (e) {}
-      router.replace(`/quiz/${quiz._id}/live`);
-    } catch (err: any) {
-      // Show custom error messages from backend
-      if (err?.response?.data?.message) {
-        setGuestError(err.response.data.message);
+          guestContact: guestInfo.contact
+        }));
+        try {
+          const io = (await import('socket.io-client')).default;
+          const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000');
+          socket.emit('joinPublicQuiz', {
+            quizId: quiz._id,
+            guestName: guestInfo.name,
+            role: 'Guest'
+          });
+        } catch (e) {}
+        router.replace(`/quiz/${quiz._id}/live`);
       } else {
-        setGuestError("Failed to join as guest.");
+        setGuestError(res.data.message || 'Failed to join as guest.');
+        // Log full response and payload for debugging
+        console.error('[GUEST JOIN] API response:', res.data);
+        console.error('[GUEST JOIN] Request payload:', payload);
+      }
+    } catch (err: any) {
+      setGuestError(err?.response?.data?.message || err.message || 'Failed to join as guest.');
+      // Log error details for debugging
+      console.error('[GUEST JOIN] Error:', err);
+      if (err?.response) {
+        console.error('[GUEST JOIN] Error response:', err.response.data);
       }
     }
   };

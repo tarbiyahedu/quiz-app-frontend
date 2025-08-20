@@ -31,6 +31,13 @@ export default function Home() {
       color: "bg-blue-50 border-blue-200"
     },
     {
+      title: "Join Quizzes",
+      description: "Join your quiz quickly and easily from anywhere, anytime, with just one click.",
+      icon: <Play className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />,
+      href: "/leaderboard",
+      color: "bg-green-50 border-green-200"
+    },
+    {
       title: "Leaderboards",
       description: "Track your performance and compete with peers across departments and subjects.",
       icon: <Trophy className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />,
@@ -183,7 +190,7 @@ export default function Home() {
             >
               <h2 className="text-2xl lg:text-3xl font-bold text-[#0E2647] mb-3 lg:mb-4">Key Features</h2>
               <p className="text-base lg:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
-                Everything you need to create engaging quizzes and track student progress
+                Create engaging quizzes and easily track student progress
               </p>
             </motion.div>
             
