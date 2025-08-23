@@ -87,7 +87,7 @@ export default function QuizLeaderboardPage() {
               onChange={e => setSearch(e.target.value)}
               className="w-48"
             />
-            {/* <Button
+            <Button
               variant="outline"
               onClick={async () => {
                 setPdfLoading(true);
@@ -119,7 +119,7 @@ export default function QuizLeaderboardPage() {
               disabled={filteredLeaderboard.length === 0 || pdfLoading}
             >
               {pdfLoading ? 'Downloading PDF...' : 'Download PDF Result'}
-            </Button> */}
+            </Button>
           </div>
         </div>
         <Card className="overflow-x-auto">
