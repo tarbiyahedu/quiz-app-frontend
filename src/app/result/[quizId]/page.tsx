@@ -187,137 +187,21 @@ export default function ResultDetailsPage() {
   const downloadPDF = async () => {
     if (!detailedResult) return;
     try {
-      const jsPDF = (await import('jspdf')).default;
-      // Load fonts (base64)
-      const hindSiliguriBase64 = await loadFontBase64('HindSiliguri');
-      const amiriBase64 = await loadFontBase64('Amiri');
-
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      // Register fonts with jsPDF (after instance creation)
-      if (hindSiliguriBase64) {
-        pdf.addFileToVFS('HindSiliguri-Regular.ttf', hindSiliguriBase64);
-        pdf.addFont('HindSiliguri-Regular.ttf', 'HindSiliguri', 'normal');
-      }
-      if (amiriBase64) {
-        pdf.addFileToVFS('Amiri-Regular.ttf', amiriBase64);
-        pdf.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
-      }
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 20;
-      const contentWidth = pageWidth - 2 * margin;
-      let yPosition = margin;
-
-      // Helper: Set font for text block
-      function setFontForText(text: string, style: 'normal' | 'bold' = 'normal') {
-        const script = detectScript(text);
-        if (script === 'bangla' && hindSiliguriBase64) {
-          pdf.setFont('HindSiliguri', style);
-        } else if (script === 'arabic' && amiriBase64) {
-          pdf.setFont('Amiri', style);
-        } else {
-          pdf.setFont('helvetica', style);
-        }
-      }
-
-      pdf.setFontSize(20);
-      setFontForText('Quiz Result Report', 'bold');
-      pdf.text('Quiz Result Report', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 15;
-      pdf.setFontSize(12);
-      setFontForText(`Quiz: ${detailedResult.title}`, 'bold');
-      pdf.text(`Quiz: ${detailedResult.title}`, margin, yPosition);
-      yPosition += 8;
-      setFontForText(`Score: ${detailedResult.score}%`);
-      pdf.text(`Score: ${detailedResult.score}%`, margin, yPosition);
-      yPosition += 8;
-      setFontForText(`Correct Answers: ${detailedResult.correctAnswers}/${detailedResult.totalQuestions}`);
-      pdf.text(`Correct Answers: ${detailedResult.correctAnswers}/${detailedResult.totalQuestions}`, margin, yPosition);
-      yPosition += 8;
-      setFontForText(`Time Taken: ${detailedResult.timeTaken} minutes`);
-      pdf.text(`Time Taken: ${detailedResult.timeTaken} minutes`, margin, yPosition);
-      yPosition += 8;
-      setFontForText(`Completion Date: ${new Date(detailedResult.completionDate).toLocaleDateString()}`);
-      pdf.text(`Completion Date: ${new Date(detailedResult.completionDate).toLocaleDateString()}`, margin, yPosition);
-      yPosition += 15;
-      setFontForText('Questions and Answers:', 'bold');
-      pdf.text('Questions and Answers:', margin, yPosition);
-      yPosition += 10;
-      detailedResult.answers.forEach((answer: any, index: number) => {
-        if (yPosition > pageHeight - 60) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-        setFontForText(`Question ${index + 1}:`, 'bold');
-        pdf.setFontSize(11);
-        pdf.text(`Question ${index + 1}:`, margin, yPosition);
-        yPosition += 6;
-        setFontForText(answer.questionText);
-        pdf.setFontSize(10);
-        const questionLines = pdf.splitTextToSize(answer.questionText, contentWidth);
-        questionLines.forEach((line: string) => {
-          pdf.text(line, margin, yPosition);
-          yPosition += 5;
-        });
-        yPosition += 3;
-        pdf.setFontSize(9);
-        setFontForText(`Type: ${answer.questionType}`);
-        pdf.text(`Type: ${answer.questionType}`, margin, yPosition);
-        yPosition += 5;
-        if (answer.questionOptions && answer.questionOptions.length > 0) {
-          setFontForText('Options:');
-          pdf.text('Options:', margin, yPosition);
-          yPosition += 5;
-          answer.questionOptions.forEach((option: string, optIndex: number) => {
-            setFontForText(`${String.fromCharCode(65 + optIndex)}. ${option}`);
-            pdf.text(`${String.fromCharCode(65 + optIndex)}. ${option}`, margin + 5, yPosition);
-            yPosition += 4;
-          });
-        }
-        setFontForText('Your Answer:', 'bold');
-        pdf.text('Your Answer:', margin, yPosition);
-        yPosition += 5;
-        setFontForText(formatUserAnswer(answer));
-        const userAnswerLines = pdf.splitTextToSize(formatUserAnswer(answer), contentWidth);
-        userAnswerLines.forEach((line: string) => {
-          pdf.text(line, margin + 5, yPosition);
-          yPosition += 4;
-        });
-        yPosition += 3;
-        setFontForText('Correct Answer:', 'bold');
-        pdf.text('Correct Answer:', margin, yPosition);
-        yPosition += 5;
-        setFontForText(formatCorrectAnswer(answer));
-        const correctAnswerLines = pdf.splitTextToSize(formatCorrectAnswer(answer), contentWidth);
-        correctAnswerLines.forEach((line: string) => {
-          pdf.text(line, margin + 5, yPosition);
-          yPosition += 4;
-        });
-        yPosition += 3;
-        setFontForText(`Score: ${answer.score}/${answer.marks}`, 'bold');
-        pdf.text(`Score: ${answer.score}/${answer.marks}`, margin, yPosition);
-        yPosition += 5;
-        pdf.setFontSize(10);
-        if (answer.isCorrect) {
-          pdf.setTextColor(0, 128, 0);
-          setFontForText('✓ Correct');
-          pdf.text('✓ Correct', margin, yPosition);
-        } else {
-          pdf.setTextColor(255, 0, 0);
-          setFontForText('✗ Incorrect');
-          pdf.text('✗ Incorrect', margin, yPosition);
-        }
-        pdf.setTextColor(0, 0, 0);
-        yPosition += 8;
+      const res = await fetch(`/api/live-leaderboard/${detailedResult.id}/export-pdf`, {
+        method: 'GET',
       });
-      const fileName = `quiz-result-${detailedResult.title.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
-    } catch (err: any) {
-      if (err.message && err.message.includes('Cannot find module')) {
-        alert('PDF libraries not installed. Please run: npm install jspdf html2canvas');
-      } else {
-        alert('Failed to generate PDF. Please try again.');
-      }
+      if (!res.ok) throw new Error('Failed to fetch PDF');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quiz_${detailedResult.id}_result.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Failed to download PDF. Please try again.');
     }
   };
 
