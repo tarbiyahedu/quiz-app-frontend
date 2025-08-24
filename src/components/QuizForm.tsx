@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -506,6 +506,8 @@ const MediaEditor = ({ question, onChange }: { question: Question; onChange: (q:
 
 // Main QuizForm Component
 export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
+  // Ref for the question editor section
+  const editorRef = useRef<HTMLDivElement>(null);
   const [quiz, setQuiz] = useState<Quiz>(initialQuiz
     ? { ...initialQuiz, questions: Array.isArray(initialQuiz.questions) ? initialQuiz.questions : [] }
     : {
@@ -674,7 +676,17 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
   const handleEditQuestion = (idx: number) => {
     setEditingIndex(idx);
     setQuestionDraft(quiz.questions[idx]);
+    // Scroll will happen in useEffect below
   };
+  // Scroll to editor when editingIndex changes (i.e., Update button clicked)
+  useEffect(() => {
+    if (editingIndex !== null && editorRef.current) {
+      // Timeout ensures scroll after render
+      setTimeout(() => {
+        editorRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [editingIndex]);
 
   // Remove question
   const handleRemoveQuestion = (idx: number) => {
@@ -1074,8 +1086,8 @@ export default function QuizForm({ mode, initialQuiz, onSave }: QuizFormProps) {
           ))}
         </DndProvider>
 
-        {/* Question Editor */}
-        <div className="border rounded p-4 bg-gray-50 mb-4">
+  {/* Question Editor */}
+  <div ref={editorRef} className="border rounded p-4 bg-gray-50 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <Label>Question Type</Label>
